@@ -2,6 +2,7 @@ package io.codemine.java.postgresql.jdbc;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.codemine.java.postgresql.codecs.*;
+import io.codemine.java.postgresql.codecs.Codec;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
