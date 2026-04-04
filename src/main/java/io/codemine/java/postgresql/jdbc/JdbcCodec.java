@@ -1,8 +1,31 @@
 package io.codemine.java.postgresql.jdbc;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import io.codemine.java.postgresql.codecs.Bit;
+import io.codemine.java.postgresql.codecs.Box;
+import io.codemine.java.postgresql.codecs.Bytea;
+import io.codemine.java.postgresql.codecs.Cidr;
+import io.codemine.java.postgresql.codecs.Circle;
+import io.codemine.java.postgresql.codecs.Codec;
+import io.codemine.java.postgresql.codecs.EnumCodec;
+import io.codemine.java.postgresql.codecs.Hstore;
+import io.codemine.java.postgresql.codecs.Inet;
+import io.codemine.java.postgresql.codecs.Interval;
+import io.codemine.java.postgresql.codecs.Line;
+import io.codemine.java.postgresql.codecs.Lseg;
+import io.codemine.java.postgresql.codecs.Macaddr;
+import io.codemine.java.postgresql.codecs.Macaddr8;
+import io.codemine.java.postgresql.codecs.Multirange;
+import io.codemine.java.postgresql.codecs.Path;
+import io.codemine.java.postgresql.codecs.Point;
+import io.codemine.java.postgresql.codecs.Polygon;
+import io.codemine.java.postgresql.codecs.Range;
+import io.codemine.java.postgresql.codecs.Timetz;
+import io.codemine.java.postgresql.codecs.Tsvector;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.Optional;
 import org.postgresql.util.PGobject;
 
@@ -12,14 +35,128 @@ import org.postgresql.util.PGobject;
  */
 public final class JdbcCodec<A> {
 
-  private final io.codemine.java.postgresql.codecs.Codec<A> codec;
+  public static final JdbcCodec<Integer> INT4 = new JdbcCodec<>(Codec.INT4);
+  public static final JdbcCodec<String> TEXT = new JdbcCodec<>(Codec.TEXT);
+  public static final JdbcCodec<Inet> INET = new JdbcCodec<>(Codec.INET);
+  public static final JdbcCodec<Macaddr> MACADDR = new JdbcCodec<>(Codec.MACADDR);
+  public static final JdbcCodec<Boolean> BOOL = new JdbcCodec<>(Codec.BOOL);
+  public static final JdbcCodec<Short> INT2 = new JdbcCodec<>(Codec.INT2);
+  public static final JdbcCodec<Long> INT8 = new JdbcCodec<>(Codec.INT8);
+  public static final JdbcCodec<Float> FLOAT4 = new JdbcCodec<>(Codec.FLOAT4);
+  public static final JdbcCodec<Double> FLOAT8 = new JdbcCodec<>(Codec.FLOAT8);
+  public static final JdbcCodec<java.math.BigDecimal> NUMERIC = new JdbcCodec<>(Codec.NUMERIC);
+  public static final JdbcCodec<Bytea> BYTEA = new JdbcCodec<>(Codec.BYTEA);
+  public static final JdbcCodec<java.util.UUID> UUID = new JdbcCodec<>(Codec.UUID);
+  public static final JdbcCodec<JsonNode> JSON = new JdbcCodec<>(Codec.JSON);
+  public static final JdbcCodec<JsonNode> JSONB = new JdbcCodec<>(Codec.JSONB);
+  public static final JdbcCodec<String> VARCHAR = new JdbcCodec<>(Codec.VARCHAR);
+  public static final JdbcCodec<String> BPCHAR = new JdbcCodec<>(Codec.BPCHAR);
+  public static final JdbcCodec<Byte> CHAR = new JdbcCodec<>(Codec.CHAR);
+  public static final JdbcCodec<Integer> OID = new JdbcCodec<>(Codec.OID);
+  public static final JdbcCodec<Long> MONEY = new JdbcCodec<>(Codec.MONEY);
+  public static final JdbcCodec<java.time.LocalDate> DATE = new JdbcCodec<>(Codec.DATE);
+  public static final JdbcCodec<java.time.LocalTime> TIME = new JdbcCodec<>(Codec.TIME);
+  public static final JdbcCodec<Timetz> TIMETZ = new JdbcCodec<>(Codec.TIMETZ);
+  public static final JdbcCodec<java.time.LocalDateTime> TIMESTAMP =
+      new JdbcCodec<>(Codec.TIMESTAMP);
+  public static final JdbcCodec<java.time.Instant> TIMESTAMPTZ = new JdbcCodec<>(Codec.TIMESTAMPTZ);
+  public static final JdbcCodec<Interval> INTERVAL = new JdbcCodec<>(Codec.INTERVAL);
+  public static final JdbcCodec<Point> POINT = new JdbcCodec<>(Codec.POINT);
+  public static final JdbcCodec<Line> LINE = new JdbcCodec<>(Codec.LINE);
+  public static final JdbcCodec<Lseg> LSEG = new JdbcCodec<>(Codec.LSEG);
+  public static final JdbcCodec<Box> BOX = new JdbcCodec<>(Codec.BOX);
+  public static final JdbcCodec<Path> PATH = new JdbcCodec<>(Codec.PATH);
+  public static final JdbcCodec<Polygon> POLYGON = new JdbcCodec<>(Codec.POLYGON);
+  public static final JdbcCodec<Circle> CIRCLE = new JdbcCodec<>(Codec.CIRCLE);
+  public static final JdbcCodec<Cidr> CIDR = new JdbcCodec<>(Codec.CIDR);
+  public static final JdbcCodec<Macaddr8> MACADDR8 = new JdbcCodec<>(Codec.MACADDR8);
+  public static final JdbcCodec<Bit> BIT = new JdbcCodec<>(Codec.BIT);
+  public static final JdbcCodec<Bit> VARBIT = new JdbcCodec<>(Codec.VARBIT);
+  public static final JdbcCodec<String> CITEXT = new JdbcCodec<>(Codec.CITEXT);
+  public static final JdbcCodec<Tsvector> TSVECTOR = new JdbcCodec<>(Codec.TSVECTOR);
+  public static final JdbcCodec<Hstore> HSTORE = new JdbcCodec<>(Codec.HSTORE);
+  public static final JdbcCodec<Range<Integer>> INT4RANGE = new JdbcCodec<>(Codec.INT4RANGE);
+  public static final JdbcCodec<Range<Long>> INT8RANGE = new JdbcCodec<>(Codec.INT8RANGE);
+  public static final JdbcCodec<Range<java.math.BigDecimal>> NUMRANGE =
+      new JdbcCodec<>(Codec.NUMRANGE);
+  public static final JdbcCodec<Range<java.time.LocalDateTime>> TSRANGE =
+      new JdbcCodec<>(Codec.TSRANGE);
+  public static final JdbcCodec<Range<java.time.Instant>> TSTZRANGE =
+      new JdbcCodec<>(Codec.TSTZRANGE);
+  public static final JdbcCodec<Range<java.time.LocalDate>> DATERANGE =
+      new JdbcCodec<>(Codec.DATERANGE);
+  public static final JdbcCodec<Multirange<Integer>> INT4MULTIRANGE =
+      new JdbcCodec<>(Codec.INT4MULTIRANGE);
+  public static final JdbcCodec<Multirange<Long>> INT8MULTIRANGE =
+      new JdbcCodec<>(Codec.INT8MULTIRANGE);
+  public static final JdbcCodec<Multirange<java.math.BigDecimal>> NUMMULTIRANGE =
+      new JdbcCodec<>(Codec.NUMMULTIRANGE);
+  public static final JdbcCodec<Multirange<java.time.LocalDateTime>> TSMULTIRANGE =
+      new JdbcCodec<>(Codec.TSMULTIRANGE);
+  public static final JdbcCodec<Multirange<java.time.Instant>> TSTZMULTIRANGE =
+      new JdbcCodec<>(Codec.TSTZMULTIRANGE);
+  public static final JdbcCodec<Multirange<java.time.LocalDate>> DATEMULTIRANGE =
+      new JdbcCodec<>(Codec.DATEMULTIRANGE);
+
+  /**
+   * Returns a codec for PostgreSQL {@code bit(n)} — a fixed-length bit string of exactly {@code n}
+   * bits.
+   *
+   * <p>If {@code n <= 0}, this returns the unparameterized {@link #BIT} codec.
+   */
+  public static JdbcCodec<Bit> bit(int n) {
+    return new JdbcCodec<>(Codec.bit(n));
+  }
+
+  /**
+   * Returns a codec for PostgreSQL {@code varbit(n)} — a variable-length bit string of at most
+   * {@code n} bits.
+   *
+   * <p>If {@code n <= 0}, this returns the unparameterized {@link #VARBIT} codec.
+   */
+  public static JdbcCodec<Bit> varbit(int n) {
+    return new JdbcCodec<>(Codec.varbit(n));
+  }
+
+  /**
+   * Returns a codec for PostgreSQL {@code varchar(n)} — a variable-length character string of at
+   * most {@code n} characters.
+   *
+   * <p>If {@code n <= 0}, this returns the unparameterized {@link #VARCHAR} codec.
+   */
+  public static JdbcCodec<String> varchar(int n) {
+    return new JdbcCodec<>(Codec.varchar(n));
+  }
+
+  /**
+   * Returns a codec for PostgreSQL {@code bpchar(n)} — a fixed-length blank-padded character string
+   * of exactly {@code n} characters.
+   */
+  public static JdbcCodec<String> bpchar(int n) {
+    return new JdbcCodec<>(Codec.bpchar(n));
+  }
+
+  /**
+   * Returns a codec for PostgreSQL enum types.
+   *
+   * @param schema the schema name. Empty string or null for the default schema (usually "public")
+   * @param name the enum type name
+   * @param valueToLabel a map of enum values to their corresponding labels
+   * @param <A> the enum type
+   * @return a {@link JdbcCodec} for the specified enum type
+   */
+  public static <A> JdbcCodec<A> enum_(String schema, String name, Map<A, String> valueToLabel) {
+    return new JdbcCodec<>(new EnumCodec<>(schema, name, valueToLabel));
+  }
+
+  private final Codec<A> codec;
 
   /**
    * Creates a new {@link JdbcCodec} instance.
    *
    * @param codec the underlying codec
    */
-  public JdbcCodec(io.codemine.java.postgresql.codecs.Codec<A> codec) {
+  public JdbcCodec(Codec<A> codec) {
     this.codec = codec;
   }
 
@@ -56,7 +193,7 @@ public final class JdbcCodec<A> {
     }
     try {
       return codec.decodeInTextFromString(text);
-    } catch (io.codemine.java.postgresql.codecs.Codec.DecodingException e) {
+    } catch (Codec.DecodingException e) {
       throw new SQLException("Failed to decode cell at row " + row + ", column " + col, "22000", e);
     }
   }
@@ -77,7 +214,7 @@ public final class JdbcCodec<A> {
     }
     try {
       return codec.decodeInTextFromString(text);
-    } catch (io.codemine.java.postgresql.codecs.Codec.DecodingException e) {
+    } catch (Codec.DecodingException e) {
       throw new SQLException("Failed to decode cell at row " + row + ", column " + col, "22000", e);
     }
   }
@@ -99,7 +236,7 @@ public final class JdbcCodec<A> {
     }
     try {
       return Optional.of(codec.decodeInTextFromString(text));
-    } catch (io.codemine.java.postgresql.codecs.Codec.DecodingException e) {
+    } catch (Codec.DecodingException e) {
       throw new SQLException("Failed to decode cell at row " + row + ", column " + col, "22000", e);
     }
   }
