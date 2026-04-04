@@ -1,27 +1,7 @@
 package io.codemine.java.postgresql.jdbc;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.codemine.java.postgresql.codecs.Bit;
-import io.codemine.java.postgresql.codecs.Box;
-import io.codemine.java.postgresql.codecs.Bytea;
-import io.codemine.java.postgresql.codecs.Cidr;
-import io.codemine.java.postgresql.codecs.Circle;
-import io.codemine.java.postgresql.codecs.Codec;
-import io.codemine.java.postgresql.codecs.EnumCodec;
-import io.codemine.java.postgresql.codecs.Hstore;
-import io.codemine.java.postgresql.codecs.Inet;
-import io.codemine.java.postgresql.codecs.Interval;
-import io.codemine.java.postgresql.codecs.Line;
-import io.codemine.java.postgresql.codecs.Lseg;
-import io.codemine.java.postgresql.codecs.Macaddr;
-import io.codemine.java.postgresql.codecs.Macaddr8;
-import io.codemine.java.postgresql.codecs.Multirange;
-import io.codemine.java.postgresql.codecs.Path;
-import io.codemine.java.postgresql.codecs.Point;
-import io.codemine.java.postgresql.codecs.Polygon;
-import io.codemine.java.postgresql.codecs.Range;
-import io.codemine.java.postgresql.codecs.Timetz;
-import io.codemine.java.postgresql.codecs.Tsvector;
+import io.codemine.java.postgresql.codecs.*;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -30,8 +10,9 @@ import java.util.Optional;
 import org.postgresql.util.PGobject;
 
 /**
- * Adapter between the {@code postgresql-codecs} library and JDBC. Provides utilities for encoding
- * and decoding values using {@link Codec} instances and binding them to JDBC statements.
+ * A codec for PostgreSQL types intended for use with pgJDBC. This class provides methods for
+ * binding values to prepared statements and decoding values from result sets, using the underlying
+ * * {@link Codec} for the actual encoding and decoding logic.
  */
 public final class JdbcCodec<A> {
 
