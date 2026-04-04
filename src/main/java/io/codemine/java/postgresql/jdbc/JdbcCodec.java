@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import org.postgresql.util.PGobject;
 
 /**
@@ -128,6 +129,44 @@ public final class JdbcCodec<A> {
    */
   public static <A> JdbcCodec<A> enum_(String schema, String name, Map<A, String> valueToLabel) {
     return new JdbcCodec<>(new EnumCodec<>(schema, name, valueToLabel));
+  }
+
+  /**
+   * Creates a composite codec for any number of fields using an untyped vararg array constructor.
+   *
+   * <p>The {@code construct} function receives an {@code Object[]} whose elements correspond
+   * positionally to the supplied field descriptors.
+   *
+   * <p><b>Note:</b> this constructor is less safely typed than the arity-specific overloads.
+   * Callers are responsible for casting elements of the array to the correct types.
+   *
+   * @param schema PostgreSQL schema name, or empty/null for default search path
+   * @param name PostgreSQL composite type name
+   * @param construct function that maps an {@code Object[]} of decoded field values to {@code Z}
+   * @param fields field descriptors in declaration order
+   */
+  @SafeVarargs
+  public static <Z> JdbcCodec<Z> composite(
+      String schema,
+      String name,
+      Function<Object[], Z> construct,
+      CompositeCodec.Field<Z, ?>... fields) {
+    return new JdbcCodec<>(new CompositeCodec<>(schema, name, construct, fields));
+  }
+
+  /**
+   * Creates a field descriptor for a composite type.
+   *
+   * @param name the field name
+   * @param codec the codec for the field type
+   * @param getter a function to extract the field value from the composite object
+   * @param <Z> the composite type
+   * @param <A> the field type
+   * @return a field descriptor
+   */
+  public static <Z, A> CompositeCodec.Field<Z, A> field(
+      String name, JdbcCodec<A> codec, Function<Z, A> getter) {
+    return new CompositeCodec.Field<>(name, getter, codec.codec);
   }
 
   private final Codec<A> codec;
