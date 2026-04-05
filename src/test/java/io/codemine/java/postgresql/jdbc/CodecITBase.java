@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import net.jqwik.api.Arbitrary;
@@ -22,8 +23,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * Base class for pgjdbc integration tests. Spins up a PostgreSQL testcontainer and exercises each
- * codec's {@link Codec#bind}, {@link Codec#decodeNullable}, {@link Codec#decodeNonNullable}, and
- * {@link Codec#decodeOptional} methods against a real database.
+ * codec's {@link Codec#bind}, {@link Codec#decodeNullable}, {@link Codec#decodeNonNullable}, {@link
+ * Codec#decodeOptional}, and array roundtrip behavior against a real database.
  *
  * <p>Subclasses only need to provide the codec under test via the constructor.
  *
@@ -44,10 +45,12 @@ abstract class CodecITBase<A> {
       new ConcurrentHashMap<>();
 
   private final Codec<A> codec;
+  private final Codec<List<A>> arrayCodec;
   private final java.sql.Connection connection;
 
   protected CodecITBase(Codec<A> codec) {
     this.codec = codec;
+    arrayCodec = codec.inDim();
     connection = connectionsByClass.computeIfAbsent(this.getClass(), cls -> openConnection());
   }
 
@@ -64,6 +67,7 @@ abstract class CodecITBase<A> {
     }
   }
 
+  @SuppressWarnings("unused")
   @AfterAll
   void closeConnection() throws Exception {
     var conn = connectionsByClass.remove(this.getClass());
@@ -76,10 +80,18 @@ abstract class CodecITBase<A> {
   // Value generator
   // -------------------------------------------------------------------------
 
+  @SuppressWarnings("unused")
   @Provide
   Arbitrary<A> values() {
     return net.jqwik.api.Arbitraries.fromGeneratorWithSize(
         size -> r -> Shrinkable.unshrinkable(codec.toAgnostic().random(r, size)));
+  }
+
+  @SuppressWarnings("unused")
+  @Provide
+  Arbitrary<List<A>> arrayValues() {
+    return net.jqwik.api.Arbitraries.fromGeneratorWithSize(
+        size -> r -> Shrinkable.unshrinkable(arrayCodec.toAgnostic().random(r, size)));
   }
 
   // -------------------------------------------------------------------------
@@ -97,13 +109,24 @@ abstract class CodecITBase<A> {
     }
   }
 
+  private List<A> roundtripArray(List<A> value) throws SQLException {
+    String typeSig = arrayCodec.toAgnostic().typeSig();
+    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+      arrayCodec.bind(ps, 1, value);
+      try (ResultSet rs = ps.executeQuery()) {
+        assertTrue(rs.next(), "Expected a result row");
+        return arrayCodec.decodeNullable(rs, 1, 1);
+      }
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Roundtrip tests
   // -------------------------------------------------------------------------
 
   /**
    * Property test: a non-null value bound and decoded via pgjdbc must equal the original. Exercises
-   * the core encode→transmit→decode path against a live PostgreSQL instance.
+   * the core encode -> transmit -> decode path against a live PostgreSQL instance.
    */
   @Property(tries = 100)
   void roundtripsNonNull(@ForAll("values") A value) throws Exception {
@@ -139,7 +162,9 @@ abstract class CodecITBase<A> {
       codec.bind(ps, 1, null);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
-        assertThrows(SQLException.class, () -> codec.decodeNonNullable(rs, 1, 1));
+        SQLException thrown =
+            assertThrows(SQLException.class, () -> codec.decodeNonNullable(rs, 1, 1));
+        assertEquals("22004", thrown.getSQLState());
       }
     }
   }
@@ -173,6 +198,81 @@ abstract class CodecITBase<A> {
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
         Optional<A> result = codec.decodeOptional(rs, 1, 1);
+        assertTrue(result.isPresent(), "Expected non-empty Optional for " + typeSig);
+        assertEquals(value, result.get(), "Optional value mismatch for " + typeSig);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Array roundtrip tests
+  // -------------------------------------------------------------------------
+
+  /**
+   * Property test: a non-null array bound and decoded via pgjdbc must equal the original. Exercises
+   * the same encode→transmit→decode path as the scalar test, but for {@code A[]}.
+   */
+  @Property(tries = 100)
+  void roundtripsArrayNonNull(@ForAll("arrayValues") List<A> value) throws Exception {
+    List<A> decoded = roundtripArray(value);
+    assertEquals(
+        value,
+        decoded,
+        "Roundtrip mismatch for " + arrayCodec.toAgnostic().typeSig() + " value=" + value);
+  }
+
+  /** Binding {@code null} and decoding the array as nullable must return {@code null}. */
+  @Test
+  void nullArrayDecodesAsNull() throws Exception {
+    List<A> decoded = roundtripArray(null);
+    assertNull(decoded, "Expected null for NULL bind of " + arrayCodec.toAgnostic().typeSig());
+  }
+
+  /**
+   * Binding {@code null} and decoding the array as non-nullable must throw {@link SQLException}.
+   */
+  @Test
+  void arrayDecodeNonNullableThrowsOnNull() throws Exception {
+    String typeSig = arrayCodec.toAgnostic().typeSig();
+    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+      arrayCodec.bind(ps, 1, null);
+      try (ResultSet rs = ps.executeQuery()) {
+        assertTrue(rs.next(), "Expected a result row");
+        SQLException thrown =
+            assertThrows(SQLException.class, () -> arrayCodec.decodeNonNullable(rs, 1, 1));
+        assertEquals("22004", thrown.getSQLState());
+      }
+    }
+  }
+
+  /**
+   * Binding {@code null} and decoding the array as optional must return {@link Optional#empty()}.
+   */
+  @Test
+  void arrayDecodeOptionalEmptyForNull() throws Exception {
+    String typeSig = arrayCodec.toAgnostic().typeSig();
+    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+      arrayCodec.bind(ps, 1, null);
+      try (ResultSet rs = ps.executeQuery()) {
+        assertTrue(rs.next(), "Expected a result row");
+        Optional<List<A>> result = arrayCodec.decodeOptional(rs, 1, 1);
+        assertTrue(result.isEmpty(), "Expected Optional.empty() for NULL of " + typeSig);
+      }
+    }
+  }
+
+  /**
+   * Property test: binding a non-null array and decoding via {@link Codec#decodeOptional} must
+   * return a present {@link Optional} wrapping the original value.
+   */
+  @Property(tries = 100)
+  void arrayDecodeOptionalWrapsNonNull(@ForAll("arrayValues") List<A> value) throws Exception {
+    String typeSig = arrayCodec.toAgnostic().typeSig();
+    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+      arrayCodec.bind(ps, 1, value);
+      try (ResultSet rs = ps.executeQuery()) {
+        assertTrue(rs.next(), "Expected a result row");
+        Optional<List<A>> result = arrayCodec.decodeOptional(rs, 1, 1);
         assertTrue(result.isPresent(), "Expected non-empty Optional for " + typeSig);
         assertEquals(value, result.get(), "Optional value mismatch for " + typeSig);
       }

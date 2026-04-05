@@ -29,6 +29,7 @@ final class AgnosticCodec<A> implements Codec<A> {
    *
    * @return the underlying codec
    */
+  @Override
   public io.codemine.java.postgresql.codecs.Codec<A> toAgnostic() {
     return codec;
   }
@@ -44,15 +45,22 @@ final class AgnosticCodec<A> implements Codec<A> {
   @Override
   public void bind(PreparedStatement ps, int index, A value) throws SQLException {
     PGobject obj = new PGobject();
-    // Use the bare type name (without size modifiers like bit(1), varchar(n)) because
-    // pgjdbc looks up types by pg_type.typname, which never includes size modifiers.
-    String schema = codec.schema();
-    String name = codec.name();
-    obj.setType((schema != null && !schema.isEmpty()) ? schema + "." + name : name);
+    obj.setType(pgTypeName());
     if (value != null) {
       obj.setValue(codec.encodeInTextToString(value));
     }
     ps.setObject(index, obj);
+  }
+
+  private String pgTypeName() {
+    // Use the bare type name (without size modifiers like bit(1), varchar(n)) because pgjdbc looks
+    // up types by pg_type.typname, which never includes size modifiers.
+    String schema = codec.schema();
+    String name = codec.name();
+    if (codec.dimensions() > 0) {
+      name = "_" + name;
+    }
+    return (schema != null && !schema.isEmpty()) ? schema + "." + name : name;
   }
 
   /**
