@@ -44,7 +44,11 @@ final class AgnosticCodec<A> implements Codec<A> {
   @Override
   public void bind(PreparedStatement ps, int index, A value) throws SQLException {
     PGobject obj = new PGobject();
-    obj.setType(codec.typeSig());
+    // Use the bare type name (without size modifiers like bit(1), varchar(n)) because
+    // pgjdbc looks up types by pg_type.typname, which never includes size modifiers.
+    String schema = codec.schema();
+    String name = codec.name();
+    obj.setType((schema != null && !schema.isEmpty()) ? schema + "." + name : name);
     if (value != null) {
       obj.setValue(codec.encodeInTextToString(value));
     }

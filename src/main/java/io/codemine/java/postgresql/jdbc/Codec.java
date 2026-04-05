@@ -50,11 +50,13 @@ public interface Codec<A> {
 
   static final Codec<String> BPCHAR = new BpcharCodec();
 
-  static final Codec<Byte> CHAR = new CharCodec();
+  static final Codec<Byte> CHAR =
+      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.CHAR);
 
   static final Codec<Integer> OID = new OidCodec();
 
-  static final Codec<Long> MONEY = new MoneyCodec();
+  static final Codec<Long> MONEY =
+      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.MONEY);
 
   static final Codec<java.time.LocalDate> DATE = new DateCodec();
 
