@@ -14,11 +14,9 @@ import java.util.function.Function;
  */
 public interface Codec<A> {
 
-  public static final Codec<Integer> INT4 = 
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT4);
+  public static final Codec<Integer> INT4 = new Int4Codec();
 
-  public static final Codec<String> TEXT =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TEXT);
+  public static final Codec<String> TEXT = new TextCodec();
 
   public static final Codec<io.codemine.java.postgresql.codecs.Inet> INET =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INET);
@@ -26,29 +24,21 @@ public interface Codec<A> {
   public static final Codec<io.codemine.java.postgresql.codecs.Macaddr> MACADDR =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.MACADDR);
 
-  public static final Codec<Boolean> BOOL =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.BOOL);
+  public static final Codec<Boolean> BOOL = new BoolCodec();
 
-  public static final Codec<Short> INT2 =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT2);
+  public static final Codec<Short> INT2 = new Int2Codec();
 
-  public static final Codec<Long> INT8 =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT8);
+  public static final Codec<Long> INT8 = new Int8Codec();
 
-  public static final Codec<Float> FLOAT4 =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.FLOAT4);
+  public static final Codec<Float> FLOAT4 = new Float4Codec();
 
-  public static final Codec<Double> FLOAT8 =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.FLOAT8);
+  public static final Codec<Double> FLOAT8 = new Float8Codec();
 
-  public static final Codec<java.math.BigDecimal> NUMERIC =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.NUMERIC);
+  public static final Codec<java.math.BigDecimal> NUMERIC = new NumericCodec();
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Bytea> BYTEA =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.BYTEA);
+  public static final Codec<io.codemine.java.postgresql.codecs.Bytea> BYTEA = new ByteaCodec();
 
-  public static final Codec<java.util.UUID> UUID =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.UUID);
+  public static final Codec<java.util.UUID> UUID = new UuidCodec();
 
   public static final Codec<JsonNode> JSON =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.JSON);
@@ -56,35 +46,26 @@ public interface Codec<A> {
   public static final Codec<JsonNode> JSONB =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.JSONB);
 
-  public static final Codec<String> VARCHAR =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.VARCHAR);
+  public static final Codec<String> VARCHAR = new VarcharCodec();
 
-  public static final Codec<String> BPCHAR =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.BPCHAR);
+  public static final Codec<String> BPCHAR = new BpcharCodec();
 
-  public static final Codec<Byte> CHAR =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.CHAR);
+  public static final Codec<Byte> CHAR = new CharCodec();
 
-  public static final Codec<Integer> OID =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.OID);
+  public static final Codec<Integer> OID = new OidCodec();
 
-  public static final Codec<Long> MONEY =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.MONEY);
+  public static final Codec<Long> MONEY = new MoneyCodec();
 
-  public static final Codec<java.time.LocalDate> DATE =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.DATE);
+  public static final Codec<java.time.LocalDate> DATE = new DateCodec();
 
-  public static final Codec<java.time.LocalTime> TIME =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TIME);
+  public static final Codec<java.time.LocalTime> TIME = new TimeCodec();
 
   public static final Codec<io.codemine.java.postgresql.codecs.Timetz> TIMETZ =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TIMETZ);
 
-  public static final Codec<java.time.LocalDateTime> TIMESTAMP =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TIMESTAMP);
+  public static final Codec<java.time.LocalDateTime> TIMESTAMP = new TimestampCodec();
 
-  public static final Codec<java.time.Instant> TIMESTAMPTZ =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TIMESTAMPTZ);
+  public static final Codec<java.time.Instant> TIMESTAMPTZ = new TimestamptzCodec();
 
   public static final Codec<io.codemine.java.postgresql.codecs.Interval> INTERVAL =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INTERVAL);
@@ -122,8 +103,7 @@ public interface Codec<A> {
   public static final Codec<io.codemine.java.postgresql.codecs.Bit> VARBIT =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.VARBIT);
 
-  public static final Codec<String> CITEXT =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.CITEXT);
+  public static final Codec<String> CITEXT = new CitextCodec();
 
   public static final Codec<io.codemine.java.postgresql.codecs.Tsvector> TSVECTOR =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSVECTOR);
