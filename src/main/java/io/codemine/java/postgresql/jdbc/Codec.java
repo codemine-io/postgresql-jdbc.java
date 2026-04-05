@@ -14,137 +14,137 @@ import java.util.function.Function;
  */
 public interface Codec<A> {
 
-  public static final Codec<Integer> INT4 = new Int4Codec();
+  static final Codec<Integer> INT4 = new Int4Codec();
 
-  public static final Codec<String> TEXT = new TextCodec();
+  static final Codec<String> TEXT = new TextCodec();
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Inet> INET =
+  static final Codec<io.codemine.java.postgresql.codecs.Inet> INET =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INET);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Macaddr> MACADDR =
+  static final Codec<io.codemine.java.postgresql.codecs.Macaddr> MACADDR =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.MACADDR);
 
-  public static final Codec<Boolean> BOOL = new BoolCodec();
+  static final Codec<Boolean> BOOL = new BoolCodec();
 
-  public static final Codec<Short> INT2 = new Int2Codec();
+  static final Codec<Short> INT2 = new Int2Codec();
 
-  public static final Codec<Long> INT8 = new Int8Codec();
+  static final Codec<Long> INT8 = new Int8Codec();
 
-  public static final Codec<Float> FLOAT4 = new Float4Codec();
+  static final Codec<Float> FLOAT4 = new Float4Codec();
 
-  public static final Codec<Double> FLOAT8 = new Float8Codec();
+  static final Codec<Double> FLOAT8 = new Float8Codec();
 
-  public static final Codec<java.math.BigDecimal> NUMERIC = new NumericCodec();
+  static final Codec<java.math.BigDecimal> NUMERIC = new NumericCodec();
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Bytea> BYTEA = new ByteaCodec();
+  static final Codec<io.codemine.java.postgresql.codecs.Bytea> BYTEA = new ByteaCodec();
 
-  public static final Codec<java.util.UUID> UUID = new UuidCodec();
+  static final Codec<java.util.UUID> UUID = new UuidCodec();
 
-  public static final Codec<JsonNode> JSON =
+  static final Codec<JsonNode> JSON =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.JSON);
 
-  public static final Codec<JsonNode> JSONB =
+  static final Codec<JsonNode> JSONB =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.JSONB);
 
-  public static final Codec<String> VARCHAR = new VarcharCodec();
+  static final Codec<String> VARCHAR = new VarcharCodec();
 
-  public static final Codec<String> BPCHAR = new BpcharCodec();
+  static final Codec<String> BPCHAR = new BpcharCodec();
 
-  public static final Codec<Byte> CHAR = new CharCodec();
+  static final Codec<Byte> CHAR = new CharCodec();
 
-  public static final Codec<Integer> OID = new OidCodec();
+  static final Codec<Integer> OID = new OidCodec();
 
-  public static final Codec<Long> MONEY = new MoneyCodec();
+  static final Codec<Long> MONEY = new MoneyCodec();
 
-  public static final Codec<java.time.LocalDate> DATE = new DateCodec();
+  static final Codec<java.time.LocalDate> DATE = new DateCodec();
 
-  public static final Codec<java.time.LocalTime> TIME = new TimeCodec();
+  static final Codec<java.time.LocalTime> TIME = new TimeCodec();
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Timetz> TIMETZ =
+  static final Codec<io.codemine.java.postgresql.codecs.Timetz> TIMETZ =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TIMETZ);
 
-  public static final Codec<java.time.LocalDateTime> TIMESTAMP = new TimestampCodec();
+  static final Codec<java.time.LocalDateTime> TIMESTAMP = new TimestampCodec();
 
-  public static final Codec<java.time.Instant> TIMESTAMPTZ = new TimestamptzCodec();
+  static final Codec<java.time.Instant> TIMESTAMPTZ = new TimestamptzCodec();
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Interval> INTERVAL =
+  static final Codec<io.codemine.java.postgresql.codecs.Interval> INTERVAL =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INTERVAL);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Point> POINT =
+  static final Codec<io.codemine.java.postgresql.codecs.Point> POINT =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.POINT);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Line> LINE =
+  static final Codec<io.codemine.java.postgresql.codecs.Line> LINE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.LINE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Lseg> LSEG =
+  static final Codec<io.codemine.java.postgresql.codecs.Lseg> LSEG =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.LSEG);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Box> BOX =
+  static final Codec<io.codemine.java.postgresql.codecs.Box> BOX =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.BOX);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Path> PATH =
+  static final Codec<io.codemine.java.postgresql.codecs.Path> PATH =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.PATH);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Polygon> POLYGON =
+  static final Codec<io.codemine.java.postgresql.codecs.Polygon> POLYGON =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.POLYGON);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Circle> CIRCLE =
+  static final Codec<io.codemine.java.postgresql.codecs.Circle> CIRCLE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.CIRCLE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Cidr> CIDR =
+  static final Codec<io.codemine.java.postgresql.codecs.Cidr> CIDR =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.CIDR);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Macaddr8> MACADDR8 =
+  static final Codec<io.codemine.java.postgresql.codecs.Macaddr8> MACADDR8 =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.MACADDR8);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Bit> BIT =
+  static final Codec<io.codemine.java.postgresql.codecs.Bit> BIT =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.BIT);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Bit> VARBIT =
+  static final Codec<io.codemine.java.postgresql.codecs.Bit> VARBIT =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.VARBIT);
 
-  public static final Codec<String> CITEXT = new CitextCodec();
+  static final Codec<String> CITEXT = new CitextCodec();
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Tsvector> TSVECTOR =
+  static final Codec<io.codemine.java.postgresql.codecs.Tsvector> TSVECTOR =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSVECTOR);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Hstore> HSTORE =
+  static final Codec<io.codemine.java.postgresql.codecs.Hstore> HSTORE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.HSTORE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Range<Integer>> INT4RANGE =
+  static final Codec<io.codemine.java.postgresql.codecs.Range<Integer>> INT4RANGE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT4RANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Range<Long>> INT8RANGE =
+  static final Codec<io.codemine.java.postgresql.codecs.Range<Long>> INT8RANGE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT8RANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Range<java.math.BigDecimal>>
+  static final Codec<io.codemine.java.postgresql.codecs.Range<java.math.BigDecimal>>
       NUMRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.NUMRANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.LocalDateTime>>
+  static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.LocalDateTime>>
       TSRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSRANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.Instant>> TSTZRANGE =
+  static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.Instant>> TSTZRANGE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSTZRANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.LocalDate>>
+  static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.LocalDate>>
       DATERANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.DATERANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Multirange<Integer>> INT4MULTIRANGE =
+  static final Codec<io.codemine.java.postgresql.codecs.Multirange<Integer>> INT4MULTIRANGE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT4MULTIRANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Multirange<Long>> INT8MULTIRANGE =
+  static final Codec<io.codemine.java.postgresql.codecs.Multirange<Long>> INT8MULTIRANGE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT8MULTIRANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.math.BigDecimal>>
+  static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.math.BigDecimal>>
       NUMMULTIRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.NUMMULTIRANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.time.LocalDateTime>>
+  static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.time.LocalDateTime>>
       TSMULTIRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSMULTIRANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.time.Instant>>
+  static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.time.Instant>>
       TSTZMULTIRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSTZMULTIRANGE);
 
-  public static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.time.LocalDate>>
+  static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.time.LocalDate>>
       DATEMULTIRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.DATEMULTIRANGE);
 
   /**
@@ -153,7 +153,7 @@ public interface Codec<A> {
    *
    * <p>If {@code n <= 0}, this returns the unparameterized {@link #BIT} codec.
    */
-  public static Codec<io.codemine.java.postgresql.codecs.Bit> bit(int n) {
+  static Codec<io.codemine.java.postgresql.codecs.Bit> bit(int n) {
     return new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.bit(n));
   }
 
@@ -163,7 +163,7 @@ public interface Codec<A> {
    *
    * <p>If {@code n <= 0}, this returns the unparameterized {@link #VARBIT} codec.
    */
-  public static Codec<io.codemine.java.postgresql.codecs.Bit> varbit(int n) {
+  static Codec<io.codemine.java.postgresql.codecs.Bit> varbit(int n) {
     return new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.varbit(n));
   }
 
@@ -173,7 +173,7 @@ public interface Codec<A> {
    *
    * <p>If {@code n <= 0}, this returns the unparameterized {@link #VARCHAR} codec.
    */
-  public static Codec<String> varchar(int n) {
+  static Codec<String> varchar(int n) {
     return new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.varchar(n));
   }
 
@@ -181,20 +181,20 @@ public interface Codec<A> {
    * Returns a codec for PostgreSQL {@code bpchar(n)} — a fixed-length blank-padded character string
    * of exactly {@code n} characters.
    */
-  public static Codec<String> bpchar(int n) {
+  static Codec<String> bpchar(int n) {
     return new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.bpchar(n));
   }
 
   /**
    * Returns a codec for PostgreSQL enum types.
    *
-   * @param schema the schema name. Empty string or null for the default schema (usually "public")
+   * @param schema the schema name. Empty string or null for the default schema (usually ")
    * @param name the enum type name
    * @param valueToLabel a map of enum values to their corresponding labels
    * @param <A> the enum type
    * @return a {@link Codec} for the specified enum type
    */
-  public static <A> Codec<A> enum_(String schema, String name, Map<A, String> valueToLabel) {
+  static <A> Codec<A> enum_(String schema, String name, Map<A, String> valueToLabel) {
     return new AgnosticCodec<>(
         new io.codemine.java.postgresql.codecs.EnumCodec<>(schema, name, valueToLabel));
   }
@@ -214,7 +214,7 @@ public interface Codec<A> {
    * @param fields field descriptors in declaration order
    */
   @SafeVarargs
-  public static <Z> Codec<Z> composite(
+  static <Z> Codec<Z> composite(
       String schema,
       String name,
       Function<Object[], Z> construct,
@@ -233,7 +233,7 @@ public interface Codec<A> {
    * @param <A> the field type
    * @return a field descriptor
    */
-  public static <Z, A> io.codemine.java.postgresql.codecs.CompositeCodec.Field<Z, A> field(
+  static <Z, A> io.codemine.java.postgresql.codecs.CompositeCodec.Field<Z, A> field(
       String name, Codec<A> codec, Function<Z, A> getter) {
     return new io.codemine.java.postgresql.codecs.CompositeCodec.Field<>(
         name, getter, codec.toAgnostic());
@@ -245,7 +245,7 @@ public interface Codec<A> {
    * <p>This is required for composite codecs, which need to delegate to the underlying agnostic
    * codec for each field.
    */
-  public io.codemine.java.postgresql.codecs.Codec<A> toAgnostic();
+  io.codemine.java.postgresql.codecs.Codec<A> toAgnostic();
 
   /**
    * Binds a value to a prepared statement.
@@ -255,7 +255,7 @@ public interface Codec<A> {
    * @param value the value to bind
    * @throws SQLException if a database access error occurs
    */
-  public void bind(PreparedStatement ps, int index, A value) throws SQLException;
+  void bind(PreparedStatement ps, int index, A value) throws SQLException;
 
   /**
    * Decodes a non-nullable value from the result set.
@@ -266,7 +266,7 @@ public interface Codec<A> {
    * @return the decoded value
    * @throws SQLException if a database access error occurs or the value is null
    */
-  public A decodeNonNullable(ResultSet rs, int row, int col) throws SQLException;
+  A decodeNonNullable(ResultSet rs, int row, int col) throws SQLException;
 
   /**
    * Decodes a nullable value from the result set.
@@ -277,7 +277,7 @@ public interface Codec<A> {
    * @return the decoded value, or null if the value is SQL NULL
    * @throws SQLException if a database access error occurs
    */
-  public A decodeNullable(ResultSet rs, int row, int col) throws SQLException;
+  A decodeNullable(ResultSet rs, int row, int col) throws SQLException;
 
   /**
    * Decodes an optional value from the result set.
