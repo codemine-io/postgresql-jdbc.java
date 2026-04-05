@@ -54,7 +54,8 @@ public interface Codec<A> {
 
   static final Codec<Integer> OID = new OidCodec();
 
-  static final Codec<Long> MONEY = new MoneyCodec();
+  static final Codec<Long> MONEY =
+      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.MONEY);
 
   static final Codec<java.time.LocalDate> DATE = new DateCodec();
 
