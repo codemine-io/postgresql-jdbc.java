@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -299,5 +300,15 @@ public interface Codec<A> {
    */
   default Optional<A> decodeOptional(ResultSet rs, int row, int col) throws SQLException {
     return Optional.ofNullable(decodeNullable(rs, row, col));
+  }
+
+  /**
+   * Add one dimension of array nesting to this codec, returning a codec for the corresponding
+   * PostgreSQL array type. For example, if this is a codec for type {@code A}, the returned codec
+   * will be for type {@code A[]}. This can be called repeatedly to create codecs for
+   * multi-dimensional arrays, e.g. {@code A[][]}.
+   */
+  default Codec<List<A>> inDim() {
+    return new AgnosticCodec<>(this.toAgnostic().inDim());
   }
 }
