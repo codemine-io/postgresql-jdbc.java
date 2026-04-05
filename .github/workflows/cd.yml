@@ -84,11 +84,20 @@ jobs:
           PAGES_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
           echo "url=${PAGES_URL}/v${{ inputs.version }}/" >> "$GITHUB_OUTPUT"
 
+      - name: Determine target commit
+        id: target-commit
+        run: |
+          if [ -n "${{ steps.commit.outputs.commit_hash }}" ]; then
+            echo "sha=${{ steps.commit.outputs.commit_hash }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub release
         run: |
           gh release create "v${{ inputs.version }}" \
             --title "v${{ inputs.version }}" \
             --notes "📖 [Documentation](${{ steps.docs-url.outputs.url }})" \
-            --target ${{ steps.commit.outputs.commit_hash }}
+            --target ${{ steps.target-commit.outputs.sha }}
         env:
           GH_TOKEN: ${{ github.token }}
