@@ -14,18 +14,22 @@ final class CharCodec implements Codec<Byte> {
   @Override
   public void bind(PreparedStatement ps, int index, Byte value) throws SQLException {
     if (value == null) {
-      ps.setNull(index, Types.TINYINT);
+      ps.setNull(index, Types.OTHER);
     } else {
-      ps.setByte(index, value);
+      // pgjdbc has no native binding for PostgreSQL's internal "char" (OID 18) type.
+      // Encode the byte as a single ISO-8859-1 character; PostgreSQL can cast varchar
+      // to "char" by taking the first byte.
+      ps.setString(index, String.valueOf((char) (value & 0xFF)));
     }
   }
 
   @Override
   public Byte decodeNullable(ResultSet rs, int row, int col) throws SQLException {
-    byte value = rs.getByte(col);
-    if (rs.wasNull()) {
+    // rs.getByte() cannot parse character strings; read as String and extract first byte.
+    String s = rs.getString(col);
+    if (s == null) {
       return null;
     }
-    return value;
+    return s.isEmpty() ? 0 : (byte) s.charAt(0);
   }
 }

@@ -17,16 +17,15 @@ final class TimeCodec implements Codec<LocalTime> {
     if (value == null) {
       ps.setNull(index, Types.TIME);
     } else {
-      ps.setTime(index, java.sql.Time.valueOf(value));
+      // Use setObject with LocalTime directly: pgjdbc supports Java 8 time types natively
+      // and preserves sub-second (microsecond) precision, unlike java.sql.Time.valueOf().
+      ps.setObject(index, value);
     }
   }
 
   @Override
   public LocalTime decodeNullable(ResultSet rs, int row, int col) throws SQLException {
-    java.sql.Time value = rs.getTime(col);
-    if (value == null) {
-      return null;
-    }
-    return value.toLocalTime();
+    // getObject(col, LocalTime.class) preserves microseconds; rs.getTime() truncates to seconds.
+    return rs.getObject(col, LocalTime.class);
   }
 }
