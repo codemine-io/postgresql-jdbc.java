@@ -21,15 +21,6 @@ final class Int2Codec implements Codec<Short> {
   }
 
   @Override
-  public Short decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    short value = rs.getShort(col);
-    if (rs.wasNull()) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public Short decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     short value = rs.getShort(col);
     if (rs.wasNull()) {

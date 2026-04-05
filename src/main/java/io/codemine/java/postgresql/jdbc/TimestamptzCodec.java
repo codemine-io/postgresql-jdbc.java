@@ -24,15 +24,6 @@ final class TimestamptzCodec implements Codec<Instant> {
   }
 
   @Override
-  public Instant decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    OffsetDateTime value = rs.getObject(col, OffsetDateTime.class);
-    if (value == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value.toInstant();
-  }
-
-  @Override
   public Instant decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     OffsetDateTime value = rs.getObject(col, OffsetDateTime.class);
     if (value == null) {

@@ -22,15 +22,6 @@ final class TimestampCodec implements Codec<LocalDateTime> {
   }
 
   @Override
-  public LocalDateTime decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    java.sql.Timestamp value = rs.getTimestamp(col);
-    if (value == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value.toLocalDateTime();
-  }
-
-  @Override
   public LocalDateTime decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     java.sql.Timestamp value = rs.getTimestamp(col);
     if (value == null) {

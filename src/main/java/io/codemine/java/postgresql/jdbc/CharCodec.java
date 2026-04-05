@@ -21,15 +21,6 @@ final class CharCodec implements Codec<Byte> {
   }
 
   @Override
-  public Byte decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    byte value = rs.getByte(col);
-    if (rs.wasNull()) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public Byte decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     byte value = rs.getByte(col);
     if (rs.wasNull()) {

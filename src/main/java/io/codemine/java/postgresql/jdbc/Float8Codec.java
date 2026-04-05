@@ -21,15 +21,6 @@ final class Float8Codec implements Codec<Double> {
   }
 
   @Override
-  public Double decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    double value = rs.getDouble(col);
-    if (rs.wasNull()) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public Double decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     double value = rs.getDouble(col);
     if (rs.wasNull()) {

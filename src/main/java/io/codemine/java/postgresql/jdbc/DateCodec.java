@@ -22,15 +22,6 @@ final class DateCodec implements Codec<LocalDate> {
   }
 
   @Override
-  public LocalDate decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    java.sql.Date value = rs.getDate(col);
-    if (value == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value.toLocalDate();
-  }
-
-  @Override
   public LocalDate decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     java.sql.Date value = rs.getDate(col);
     if (value == null) {

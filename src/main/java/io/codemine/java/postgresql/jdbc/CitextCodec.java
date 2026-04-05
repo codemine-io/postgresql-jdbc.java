@@ -21,15 +21,6 @@ final class CitextCodec implements Codec<String> {
   }
 
   @Override
-  public String decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    String value = rs.getString(col);
-    if (value == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public String decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     return rs.getString(col);
   }

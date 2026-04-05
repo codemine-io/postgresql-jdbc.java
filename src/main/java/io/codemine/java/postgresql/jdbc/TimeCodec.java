@@ -22,15 +22,6 @@ final class TimeCodec implements Codec<LocalTime> {
   }
 
   @Override
-  public LocalTime decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    java.sql.Time value = rs.getTime(col);
-    if (value == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value.toLocalTime();
-  }
-
-  @Override
   public LocalTime decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     java.sql.Time value = rs.getTime(col);
     if (value == null) {

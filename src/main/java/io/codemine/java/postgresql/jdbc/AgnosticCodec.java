@@ -52,28 +52,6 @@ final class AgnosticCodec<A> implements Codec<A> {
   }
 
   /**
-   * Decodes a non-nullable value from the result set.
-   *
-   * @param rs the result set
-   * @param row the row index
-   * @param col the column index
-   * @return the decoded value
-   * @throws SQLException if a database access error occurs or the value is null
-   */
-  @Override
-  public A decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    String text = rs.getString(col);
-    if (text == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    try {
-      return codec.decodeInTextFromString(text);
-    } catch (io.codemine.java.postgresql.codecs.Codec.DecodingException e) {
-      throw new SQLException("Failed to decode cell at row " + row + ", column " + col, "22000", e);
-    }
-  }
-
-  /**
    * Decodes a nullable value from the result set.
    *
    * @param rs the result set

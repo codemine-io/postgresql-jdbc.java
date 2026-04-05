@@ -21,15 +21,6 @@ final class Float4Codec implements Codec<Float> {
   }
 
   @Override
-  public Float decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    float value = rs.getFloat(col);
-    if (rs.wasNull()) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public Float decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     float value = rs.getFloat(col);
     if (rs.wasNull()) {

@@ -22,15 +22,6 @@ final class UuidCodec implements Codec<UUID> {
   }
 
   @Override
-  public UUID decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    UUID value = rs.getObject(col, UUID.class);
-    if (value == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public UUID decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     return rs.getObject(col, UUID.class);
   }

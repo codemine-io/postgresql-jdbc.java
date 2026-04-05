@@ -22,15 +22,6 @@ final class ByteaCodec implements Codec<Bytea> {
   }
 
   @Override
-  public Bytea decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    byte[] value = rs.getBytes(col);
-    if (value == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return new Bytea(value);
-  }
-
-  @Override
   public Bytea decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     byte[] value = rs.getBytes(col);
     if (value == null) {

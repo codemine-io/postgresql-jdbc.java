@@ -21,15 +21,6 @@ final class Int8Codec implements Codec<Long> {
   }
 
   @Override
-  public Long decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    long value = rs.getLong(col);
-    if (rs.wasNull()) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public Long decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     long value = rs.getLong(col);
     if (rs.wasNull()) {

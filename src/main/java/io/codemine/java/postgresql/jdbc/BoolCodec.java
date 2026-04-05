@@ -21,15 +21,6 @@ final class BoolCodec implements Codec<Boolean> {
   }
 
   @Override
-  public Boolean decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    boolean value = rs.getBoolean(col);
-    if (rs.wasNull()) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public Boolean decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     boolean value = rs.getBoolean(col);
     if (rs.wasNull()) {

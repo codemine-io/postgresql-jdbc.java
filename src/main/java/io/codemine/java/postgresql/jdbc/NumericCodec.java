@@ -22,15 +22,6 @@ final class NumericCodec implements Codec<BigDecimal> {
   }
 
   @Override
-  public BigDecimal decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    BigDecimal value = rs.getBigDecimal(col);
-    if (value == null) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public BigDecimal decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     return rs.getBigDecimal(col);
   }

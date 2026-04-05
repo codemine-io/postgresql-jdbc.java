@@ -117,17 +117,17 @@ public interface Codec<A> {
   static final Codec<io.codemine.java.postgresql.codecs.Range<Long>> INT8RANGE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT8RANGE);
 
-  static final Codec<io.codemine.java.postgresql.codecs.Range<java.math.BigDecimal>>
-      NUMRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.NUMRANGE);
+  static final Codec<io.codemine.java.postgresql.codecs.Range<java.math.BigDecimal>> NUMRANGE =
+      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.NUMRANGE);
 
-  static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.LocalDateTime>>
-      TSRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSRANGE);
+  static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.LocalDateTime>> TSRANGE =
+      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSRANGE);
 
   static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.Instant>> TSTZRANGE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.TSTZRANGE);
 
-  static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.LocalDate>>
-      DATERANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.DATERANGE);
+  static final Codec<io.codemine.java.postgresql.codecs.Range<java.time.LocalDate>> DATERANGE =
+      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.DATERANGE);
 
   static final Codec<io.codemine.java.postgresql.codecs.Multirange<Integer>> INT4MULTIRANGE =
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.INT4MULTIRANGE);
@@ -258,17 +258,6 @@ public interface Codec<A> {
   void bind(PreparedStatement ps, int index, A value) throws SQLException;
 
   /**
-   * Decodes a non-nullable value from the result set.
-   *
-   * @param rs the result set
-   * @param row the row index
-   * @param col the column index
-   * @return the decoded value
-   * @throws SQLException if a database access error occurs or the value is null
-   */
-  A decodeNonNullable(ResultSet rs, int row, int col) throws SQLException;
-
-  /**
    * Decodes a nullable value from the result set.
    *
    * @param rs the result set
@@ -278,6 +267,23 @@ public interface Codec<A> {
    * @throws SQLException if a database access error occurs
    */
   A decodeNullable(ResultSet rs, int row, int col) throws SQLException;
+
+  /**
+   * Decodes a non-nullable value from the result set.
+   *
+   * @param rs the result set
+   * @param row the row index
+   * @param col the column index
+   * @return the decoded value
+   * @throws SQLException if a database access error occurs or the value is null
+   */
+  default A decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
+    A value = decodeNullable(rs, row, col);
+    if (value == null) {
+      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
+    }
+    return value;
+  }
 
   /**
    * Decodes an optional value from the result set.

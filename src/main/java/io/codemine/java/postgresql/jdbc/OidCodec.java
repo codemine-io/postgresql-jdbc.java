@@ -21,15 +21,6 @@ final class OidCodec implements Codec<Integer> {
   }
 
   @Override
-  public Integer decodeNonNullable(ResultSet rs, int row, int col) throws SQLException {
-    int value = rs.getInt(col);
-    if (rs.wasNull()) {
-      throw new SQLException("Unexpected NULL value at row " + row + ", column " + col, "22004");
-    }
-    return value;
-  }
-
-  @Override
   public Integer decodeNullable(ResultSet rs, int row, int col) throws SQLException {
     int value = rs.getInt(col);
     if (rs.wasNull()) {
