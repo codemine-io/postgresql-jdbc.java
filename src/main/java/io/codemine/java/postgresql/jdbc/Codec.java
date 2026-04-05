@@ -194,7 +194,7 @@ public interface Codec<A> {
    * @param <A> the enum type
    * @return a {@link Codec} for the specified enum type
    */
-  static <A> Codec<A> enum_(String schema, String name, Map<A, String> valueToLabel) {
+  static <A> Codec<A> enumeration(String schema, String name, Map<A, String> valueToLabel) {
     return new AgnosticCodec<>(
         new io.codemine.java.postgresql.codecs.EnumCodec<>(schema, name, valueToLabel));
   }
