@@ -5,18 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.sql.DriverManager;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import net.jqwik.api.Arbitrary;
 import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
 import net.jqwik.api.Provide;
 import net.jqwik.api.Shrinkable;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -34,48 +33,33 @@ import org.testcontainers.containers.PostgreSQLContainer;
 abstract class CodecITBase<A> {
 
   static final PostgreSQLContainer<?> container;
+  static final HikariDataSource jdbcPool;
 
   static {
     container =
         new PostgreSQLContainer<>("postgres:18").withCommand("postgres -c max_connections=300");
     container.start();
-  }
 
-  private static final ConcurrentHashMap<Class<?>, java.sql.Connection> connectionsByClass =
-      new ConcurrentHashMap<>();
+    var hikariConfig = new HikariConfig();
+    hikariConfig.setJdbcUrl(container.getJdbcUrl());
+    hikariConfig.setUsername(container.getUsername());
+    hikariConfig.setPassword(container.getPassword());
+    // Disable server-side prepared-statement caching so result columns remain in text format.
+    hikariConfig.addDataSourceProperty("prepareThreshold", "0");
+    hikariConfig.setMaximumPoolSize(10);
+    jdbcPool = new HikariDataSource(hikariConfig);
+
+    Runtime.getRuntime().addShutdownHook(new Thread(jdbcPool::close));
+  }
 
   private final Codec<A> codec;
   private final Codec<List<A>> arrayCodec;
   private final Codec<List<List<A>>> arrayArrayCodec;
-  private final java.sql.Connection connection;
 
   protected CodecITBase(Codec<A> codec) {
     this.codec = codec;
     arrayCodec = codec.inDim();
     arrayArrayCodec = arrayCodec.inDim();
-    connection = connectionsByClass.computeIfAbsent(this.getClass(), cls -> openConnection());
-  }
-
-  private static java.sql.Connection openConnection() {
-    try {
-      var props = new java.util.Properties();
-      props.setProperty("user", container.getUsername());
-      props.setProperty("password", container.getPassword());
-      // Disable server-side prepared-statement caching so result columns remain in text format.
-      props.setProperty("prepareThreshold", "0");
-      return DriverManager.getConnection(container.getJdbcUrl(), props);
-    } catch (SQLException e) {
-      throw new RuntimeException("Failed to open pgjdbc connection", e);
-    }
-  }
-
-  @SuppressWarnings("unused")
-  @AfterAll
-  void closeConnection() throws Exception {
-    var conn = connectionsByClass.remove(this.getClass());
-    if (conn != null) {
-      conn.close();
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -109,7 +93,8 @@ abstract class CodecITBase<A> {
 
   private A roundtrip(A value) throws SQLException {
     String typeSig = codec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       codec.bind(ps, 1, value);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -120,7 +105,8 @@ abstract class CodecITBase<A> {
 
   private List<A> roundtripArray(List<A> value) throws SQLException {
     String typeSig = arrayCodec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       arrayCodec.bind(ps, 1, value);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -131,7 +117,8 @@ abstract class CodecITBase<A> {
 
   private List<List<A>> roundtripArrayArray(List<List<A>> value) throws SQLException {
     String typeSig = arrayArrayCodec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       arrayArrayCodec.bind(ps, 1, value);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -178,7 +165,8 @@ abstract class CodecITBase<A> {
   @Test
   void decodeNonNullableThrowsOnNull() throws Exception {
     String typeSig = codec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       codec.bind(ps, 1, null);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -196,7 +184,8 @@ abstract class CodecITBase<A> {
   @Test
   void decodeOptionalEmptyForNull() throws Exception {
     String typeSig = codec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       codec.bind(ps, 1, null);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -213,7 +202,8 @@ abstract class CodecITBase<A> {
   @Property(tries = 100)
   void decodeOptionalWrapsNonNull(@ForAll("values") A value) throws Exception {
     String typeSig = codec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       codec.bind(ps, 1, value);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -254,7 +244,8 @@ abstract class CodecITBase<A> {
   @Test
   void arrayDecodeNonNullableThrowsOnNull() throws Exception {
     String typeSig = arrayCodec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       arrayCodec.bind(ps, 1, null);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -271,7 +262,8 @@ abstract class CodecITBase<A> {
   @Test
   void arrayDecodeOptionalEmptyForNull() throws Exception {
     String typeSig = arrayCodec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       arrayCodec.bind(ps, 1, null);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -288,7 +280,8 @@ abstract class CodecITBase<A> {
   @Property(tries = 100)
   void arrayDecodeOptionalWrapsNonNull(@ForAll("arrayValues") List<A> value) throws Exception {
     String typeSig = arrayCodec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       arrayCodec.bind(ps, 1, value);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -331,7 +324,8 @@ abstract class CodecITBase<A> {
   @Test
   void arrayArrayDecodeNonNullableThrowsOnNull() throws Exception {
     String typeSig = arrayArrayCodec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       arrayArrayCodec.bind(ps, 1, null);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -349,7 +343,8 @@ abstract class CodecITBase<A> {
   @Test
   void arrayArrayDecodeOptionalEmptyForNull() throws Exception {
     String typeSig = arrayArrayCodec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       arrayArrayCodec.bind(ps, 1, null);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
@@ -367,7 +362,8 @@ abstract class CodecITBase<A> {
   void arrayArrayDecodeOptionalWrapsNonNull(@ForAll("arrayArrayValues") List<List<A>> value)
       throws Exception {
     String typeSig = arrayArrayCodec.toAgnostic().typeSig();
-    try (var ps = connection.prepareStatement("SELECT ?::" + typeSig)) {
+    try (var conn = jdbcPool.getConnection();
+        var ps = conn.prepareStatement("SELECT ?::" + typeSig)) {
       arrayArrayCodec.bind(ps, 1, value);
       try (ResultSet rs = ps.executeQuery()) {
         assertTrue(rs.next(), "Expected a result row");
