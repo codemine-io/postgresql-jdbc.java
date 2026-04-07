@@ -106,3 +106,7 @@ ArrayList<SelectAlbumByName.ResultRow> result =
 		new SelectAlbumByName("The Dark Side of the Moon")
 				.execute(jdbcConnection);
 ```
+
+For repeated update statements with the same SQL, `Statement.executeBatch(connection, statements)`
+prepares once, runs a JDBC batch, and returns each statement's decoded affected-row result in
+order.
