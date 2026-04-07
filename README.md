@@ -20,8 +20,8 @@ pgjdbc-specific adapters and utilities that make it easy to use the
 
 ## Features
 
-- Driver adapter utilities for using `Codec<A>` with pgjdbc
 - `Statement<R>` abstraction for packaging SQL, parameter binding and result decoding
+- Driver adapter utilities for using `Codec<A>` with pgjdbc
 - Helpers for encoding values as `PGobject` using codec text serialization
 - Convenience support for arrays, composite types, enums and domains
 - Jackson-based JSON/JSONB integration
@@ -30,14 +30,6 @@ pgjdbc-specific adapters and utilities that make it easy to use the
 ## Installation
 
 The package is published to Maven Central under [`io.codemine.java.postgresql:jdbc`](https://central.sonatype.com/artifact/io.codemine.java.postgresql/jdbc).
-
-```xml
-<dependency>
-	<groupId>io.codemine.java.postgresql</groupId>
-	<artifactId>jdbc</artifactId>
-	<version>0.2.0</version>
-</dependency>
-```
 
 This module depends on `postgresql-codecs` and the official `org.postgresql` driver.
 
