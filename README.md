@@ -21,6 +21,7 @@ pgjdbc-specific adapters and utilities that make it easy to use the
 ## Features
 
 - Driver adapter utilities for using `Codec<A>` with pgjdbc
+- `Statement<R>` abstraction for packaging SQL, parameter binding and result decoding
 - Helpers for encoding values as `PGobject` using codec text serialization
 - Convenience support for arrays, composite types, enums and domains
 - Jackson-based JSON/JSONB integration
@@ -34,7 +35,7 @@ The package is published to Maven Central under [`io.codemine.java.postgresql:jd
 <dependency>
 	<groupId>io.codemine.java.postgresql</groupId>
 	<artifactId>jdbc</artifactId>
-	<version>0.1.0</version>
+	<version>0.2.0</version>
 </dependency>
 ```
 
@@ -42,43 +43,66 @@ This module depends on `postgresql-codecs` and the official `org.postgresql` dri
 
 ## Usage with JDBC (pgjdbc)
 
-Encode a value with a codec and wrap it into a `PGobject` so the driver
-sends the correct type annotation:
+The usual pattern is to wrap SQL, parameter binding and result decoding in
+a `Statement<R>`. Its `execute(connection)` method prepares the statement,
+binds parameters, and chooses `execute()` or `executeUpdate()` based on
+`returnsRows()`.
 
 ```java
-import io.codemine.java.postgresql.codecs.Codec;
-import org.postgresql.util.PGobject;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.*;
+import java.util.ArrayList;
+import io.codemine.java.postgresql.jdbc.Codec;
+import io.codemine.java.postgresql.jdbc.Statement;
 
-Codec<Integer> codec = Codec.INT4;
+public record SelectAlbumByName(String name)
+        implements Statement<ArrayList<SelectAlbumByName.ResultRow>> {
 
-PGobject obj = new PGobject();
-obj.setType(codec.typeSig()); // e.g. "int4"
-obj.setValue(codec.encodeInTextToString(42));
+    public record ResultRow(
+            long id,
+            String name,
+            LocalDate released) {}
+    
+    public String sql() {
+        return "select id, name, released from album where name = ?";
+    }
 
-PreparedStatement ps = connection.prepareStatement("INSERT INTO t (col) VALUES (?)");
-ps.setObject(1, obj);
-ps.executeUpdate();
+    public void bindParams(PreparedStatement ps) throws SQLException {
+        Codec.TEXT.bind(ps, 1, this.name());
+    }
+
+    public boolean returnsRows() {
+        return true;
+    }
+
+    public ArrayList<ResultRow> decodeResultSet(ResultSet rs) throws SQLException {
+        ArrayList<ResultRow> output = new ArrayList<>();
+        int row = 0;
+        
+        while (rs.next()) {
+            long idCol = Codec.INT8.decodeNonNullable(rs, row, 1);
+            String nameCol = Codec.TEXT.decodeNonNullable(rs, row, 2);
+            LocalDate releasedCol = Codec.DATE.decodeNullable(rs, row, 3);
+
+            output.add(new ResultRow(idCol, nameCol, releasedCol));
+            row++;
+        }
+
+        return output;
+    }
+
+    public ArrayList<ResultRow> decodeAffectedRows(long affectedRows) {
+        throw new UnsupportedOperationException();
+    }
+}
 ```
 
-Decoding text columns encoded this way is just as easy:
+Then you can execute the statement and get back a fully decoded result:
 
 ```java
-String text = rs.getString("col");
-Integer value = codec.decodeInTextFromString(text);
+ArrayList<SelectAlbumByName.ResultRow> result =
+		new SelectAlbumByName("The Dark Side of the Moon")
+				.execute(jdbcConnection);
 ```
-
-Array/Composite support is automatic when codecs are composed into
-arrays or composite codecs.
-
-## Build & test
-
-Build using the provided script or Maven:
-
-```bash
-./build.bash
-# or
-mvn clean verify
-```
-
-Integration tests use Testcontainers and therefore require Docker to be
-available on the host when running the full test suite.
