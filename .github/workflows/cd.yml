@@ -67,20 +67,10 @@ jobs:
         with:
           version: ${{ inputs.version }}
 
-      - name: Build
-        if: steps.publication-check.outputs.published != 'true'
-        run: mvn --batch-mode clean compile
-
-      - name: Run unit tests
-        if: steps.publication-check.outputs.published != 'true'
-        run: mvn --batch-mode test -Dmaven.main.skip=true
-
-      - name: Run integration tests
-        if: steps.publication-check.outputs.published != 'true'
-        run: mvn --batch-mode verify -Dmaven.main.skip=true -Dmaven.test.skip=true
+      - name: Build and verify
+        run: mvn --batch-mode verify
 
       - name: Import GPG key
-        if: steps.publication-check.outputs.published != 'true'
         run: echo "${{ secrets.MAVEN_GPG_PRIVATE_KEY }}" | gpg --batch --import
 
       - name: Publish to Maven Central
