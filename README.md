@@ -101,12 +101,14 @@ List<SelectAlbumByName.ResultRow> result =
 
 ## Batching
 
-For repeated update statements with the same SQL, there is a utility class `StatementBatch<R>`. You can create a batch with `new StatementBatch<>(statements)`, which prepares once, runs a JDBC batch, and returns each statement's decoded affected-row result in order. E.g.,
+For repeated update statements with the same SQL, there is a utility class `StatementBatch<R>`. You can create a batch from an iterable using `new StatementBatch<>(statements)`, which prepares once, runs a JDBC batch, and returns each statement's decoded affected-row result in order. For convenience, there is also a varargs constructor as in the example below.
 
 ```java
-StatementBatch<Long> batch = new StatementBatch<>(List.of(
+StatementBatch<Long> batch = StatementBatch.of(
     new UpdateAlbumReleaseDate(1, LocalDate.of(1973, 3, 1)),
     new UpdateAlbumReleaseDate(2, LocalDate.of(1973, 11, 2))
-));
+);
 List<Long> affectedRows = batch.execute(jdbcConnection);
 ```
+
+The batch may be constructed once and executed multiple times with different connections, as needed.

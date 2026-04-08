@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -11,6 +12,19 @@ import java.util.Objects;
  * the same SQL text and result type) and must not return rows.
  */
 public final class StatementBatch<R> {
+
+  /**
+   * Convenience varargs factory method.
+   *
+   * @param statements the statements to execute in batch
+   * @param <T> the result type
+   * @return a new {@code StatementBatch} containing the provided statements
+   */
+  @SafeVarargs
+  public static <T> StatementBatch<T> of(Statement<T>... statements) {
+    return new StatementBatch<>(Arrays.asList(statements));
+  }
+
   private final ArrayList<Statement<R>> statements;
   private final String sql;
 
