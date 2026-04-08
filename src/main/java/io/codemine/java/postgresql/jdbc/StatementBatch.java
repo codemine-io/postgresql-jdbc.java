@@ -17,6 +17,8 @@ public final class StatementBatch<R> {
   /**
    * Create a batch of statements to execute together. All statements must be of the same type (i.e.
    * have the same SQL text and result type) and must not return rows.
+   *
+   * @param statements the statements to execute in batch
    */
   public StatementBatch(Iterable<? extends Statement<R>> statements) {
     Objects.requireNonNull(statements, "statements");
@@ -47,6 +49,10 @@ public final class StatementBatch<R> {
   /**
    * Execute the batch of statements using the provided JDBC connection. Returns a list of decoded
    * affected-row results, in the same order as the input statements.
+   *
+   * @param connection the JDBC connection to use for batch execution
+   * @return a list of decoded results corresponding to each statement in the batch
+   * @throws SQLException if a database access error occurs during execution
    */
   public ArrayList<R> execute(Connection connection) throws SQLException {
     Objects.requireNonNull(connection, "connection");

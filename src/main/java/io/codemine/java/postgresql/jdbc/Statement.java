@@ -16,10 +16,17 @@ public interface Statement<R> {
   /**
    * The SQL text for this statement. Parameter placeholders use JDBC {@code ?} syntax; custom
    * PostgreSQL types are cast explicitly, e.g. {@code ?::album_format}.
+   *
+   * @return the SQL text for this statement
    */
   String sql();
 
-  /** Bind to the prepared statement's parameter slots. */
+  /**
+   * Bind to the prepared statement's parameter slots.
+   *
+   * @param ps the prepared statement to bind parameters on
+   * @throws SQLException if a database access error occurs while binding
+   */
   void bindParams(PreparedStatement ps) throws SQLException;
 
   /**
@@ -28,13 +35,31 @@ public interface Statement<R> {
    */
   boolean returnsRows();
 
-  /** Decode a result set into the statement's result type. */
+  /**
+   * Decode a result set into the statement's result type.
+   *
+   * @param rs the result set positioned before the first row
+   * @return the decoded result of type {@code R}
+   * @throws SQLException if a database access error occurs while decoding
+   */
   R decodeResultSet(ResultSet rs) throws SQLException;
 
-  /** Decode an affected-row count into the statement's result type. */
+  /**
+   * Decode an affected-row count into the statement's result type.
+   *
+   * @param affectedRows the number of rows affected
+   * @return the decoded result of type {@code R}
+   * @throws SQLException if a database access error occurs while decoding
+   */
   R decodeAffectedRows(long affectedRows) throws SQLException;
 
-  /** Execute this statement using the provided JDBC connection. */
+  /**
+   * Execute this statement using the provided JDBC connection.
+   *
+   * @param conn the JDBC connection to use
+   * @return the decoded statement result of type {@code R}
+   * @throws SQLException if a database access error occurs while executing the statement
+   */
   default R execute(Connection conn) throws SQLException {
     try (PreparedStatement ps = conn.prepareStatement(sql())) {
       bindParams(ps);
