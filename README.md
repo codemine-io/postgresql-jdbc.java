@@ -94,11 +94,19 @@ public record SelectAlbumByName(String name)
 Then you can execute the statement and get back a fully decoded result:
 
 ```java
-ArrayList<SelectAlbumByName.ResultRow> result =
+List<SelectAlbumByName.ResultRow> result =
 		new SelectAlbumByName("The Dark Side of the Moon")
 				.execute(jdbcConnection);
 ```
 
-For repeated update statements with the same SQL, `Statement.executeBatch(connection, statements)`
-prepares once, runs a JDBC batch, and returns each statement's decoded affected-row result in
-order.
+## Batching
+
+For repeated update statements with the same SQL, there is a utility class `StatementBatch<R>`. You can create a batch with `new StatementBatch<>(statements)`, which prepares once, runs a JDBC batch, and returns each statement's decoded affected-row result in order. E.g.,
+
+```java
+StatementBatch<Long> batch = new StatementBatch<>(List.of(
+    new UpdateAlbumReleaseDate(1, LocalDate.of(1973, 3, 1)),
+    new UpdateAlbumReleaseDate(2, LocalDate.of(1973, 11, 2))
+));
+List<Long> affectedRows = batch.execute(jdbcConnection);
+```
