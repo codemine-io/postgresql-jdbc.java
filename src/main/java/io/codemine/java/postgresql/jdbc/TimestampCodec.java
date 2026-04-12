@@ -17,16 +17,12 @@ final class TimestampCodec implements Codec<LocalDateTime> {
     if (value == null) {
       ps.setNull(index, Types.TIMESTAMP);
     } else {
-      ps.setTimestamp(index, java.sql.Timestamp.valueOf(value));
+      ps.setObject(index, value);
     }
   }
 
   @Override
   public LocalDateTime decodeNullable(ResultSet rs, int row, int col) throws SQLException {
-    java.sql.Timestamp value = rs.getTimestamp(col);
-    if (value == null) {
-      return null;
-    }
-    return value.toLocalDateTime();
+    return rs.getObject(col, LocalDateTime.class);
   }
 }
