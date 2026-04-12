@@ -37,7 +37,9 @@ abstract class CodecITBase<A> {
 
   static {
     container =
-        new PostgreSQLContainer<>("postgres:18").withCommand("postgres -c max_connections=300");
+        new PostgreSQLContainer<>("postgres:18")
+            .withCommand("postgres -c max_connections=300")
+            .withInitScript("init-container.sql");
     container.start();
 
     var hikariConfig = new HikariConfig();

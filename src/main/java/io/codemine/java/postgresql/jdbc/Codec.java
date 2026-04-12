@@ -203,6 +203,10 @@ public interface Codec<A> {
   static final Codec<io.codemine.java.postgresql.codecs.Multirange<java.time.LocalDate>>
       DATEMULTIRANGE = new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.DATEMULTIRANGE);
 
+  /** Codec for SQL ltree. */
+  static final Codec<io.codemine.java.postgresql.codecs.Ltree> LTREE =
+      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.LTREE);
+
   /**
    * Returns a codec for PostgreSQL {@code bit(n)} — a fixed-length bit string of exactly {@code n}
    * bits.
