@@ -74,11 +74,11 @@ public interface Codec<A> {
       new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.CHAR);
 
   /** Codec for PostgreSQL OID. */
-  static final Codec<Integer> OID = new OidCodec();
+  static final Codec<Long> OID = new OidCodec();
 
   /** Codec for SQL money. */
-  static final Codec<Long> MONEY =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.MONEY);
+  static final Codec<java.math.BigDecimal> MONEY =
+      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.money(2));
 
   /** Codec for SQL date. */
   static final Codec<java.time.LocalDate> DATE = new DateCodec();
