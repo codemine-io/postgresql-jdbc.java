@@ -76,9 +76,19 @@ public interface Codec<A> {
   /** Codec for PostgreSQL OID. */
   static final Codec<Long> OID = new OidCodec();
 
-  /** Codec for SQL money. */
-  static final Codec<java.math.BigDecimal> MONEY =
-      new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.money(2));
+  /**
+   * Returns a codec for PostgreSQL {@code money}.
+   *
+   * <p>The {@code decimals} parameter specifies the number of fractional decimal digits, which is
+   * determined by the database's {@code lc_monetary} locale setting. The most common value is
+   * {@code 2} (cents), but locales without a fractional unit (e.g. Japanese yen) use {@code 0}.
+   *
+   * @param decimals the number of fractional digits (must be ≥ 0)
+   * @return a codec for {@code money}
+   */
+  static Codec<java.math.BigDecimal> money(int decimals) {
+    return new AgnosticCodec<>(io.codemine.java.postgresql.codecs.Codec.money(decimals));
+  }
 
   /** Codec for SQL date. */
   static final Codec<java.time.LocalDate> DATE = new DateCodec();
