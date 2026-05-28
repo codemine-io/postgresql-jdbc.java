@@ -5,24 +5,24 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 
-final class OidCodec implements Codec<Integer> {
+final class OidCodec implements Codec<Long> {
   @Override
-  public io.codemine.java.postgresql.codecs.Codec<Integer> toAgnostic() {
+  public io.codemine.java.postgresql.codecs.Codec<Long> toAgnostic() {
     return io.codemine.java.postgresql.codecs.Codec.OID;
   }
 
   @Override
-  public void bind(PreparedStatement ps, int index, Integer value) throws SQLException {
+  public void bind(PreparedStatement ps, int index, Long value) throws SQLException {
     if (value == null) {
-      ps.setNull(index, Types.INTEGER);
+      ps.setNull(index, Types.BIGINT);
     } else {
-      ps.setInt(index, value);
+      ps.setLong(index, value);
     }
   }
 
   @Override
-  public Integer decodeNullable(ResultSet rs, int row, int col) throws SQLException {
-    int value = rs.getInt(col);
+  public Long decodeNullable(ResultSet rs, int row, int col) throws SQLException {
+    long value = rs.getLong(col);
     if (rs.wasNull()) {
       return null;
     }

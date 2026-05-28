@@ -1,7 +1,7 @@
 package io.codemine.java.postgresql.jdbc;
 
-public class MoneyCodecIT extends CodecITBase<Long> {
+public class MoneyCodecIT extends CodecITBase<java.math.BigDecimal> {
   public MoneyCodecIT() {
-    super(Codec.MONEY);
+    super(Codec.money(2));
   }
 }
