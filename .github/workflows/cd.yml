@@ -61,6 +61,16 @@ jobs:
       - name: Set version
         run: mvn versions:set -DnewVersion=${{ inputs.version }} -DgenerateBackupPoms=false
 
+      - name: Update changelog for release
+        run: |
+          first_non_empty_line=$(grep -m1 -E '\S' CHANGELOG.md || true)
+          if [ "$first_non_empty_line" != "# Upcoming" ] && [ "$first_non_empty_line" != "Upcoming" ]; then
+            echo "Error: CHANGELOG.md must start with an Upcoming section"
+            exit 1
+          fi
+
+          perl -i -0pe 's/\A(\s*(?:#\s*)?)Upcoming\b/$1v${{ inputs.version }}/' CHANGELOG.md
+
       - name: Check Maven Central publication status
         id: publication-check
         uses: ./.github/actions/check-maven-central-publication
@@ -86,7 +96,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: Set package version to ${{ inputs.version }}
-          file_pattern: pom.xml
+          file_pattern: pom.xml CHANGELOG.md
 
       - name: Determine documentation URL
         id: docs-url
