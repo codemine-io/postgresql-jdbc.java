@@ -112,3 +112,57 @@ List<Long> affectedRows = batch.execute(jdbcConnection);
 ```
 
 The batch may be constructed once and executed multiple times with different connections, as needed.
+
+## Transactions
+
+For a unit of work that must run atomically, there is `Transaction<R>`. Like `Statement`, you implement a single method — `run(connection)`, which may call `Statement.execute(connection)` any number of times — and get `execute(connection)` for free. It disables autocommit, runs your code, commits on success, rolls back on any exception, and restores the connection's original autocommit state.
+
+```java
+Transaction<Void> transferFunds = connection -> {
+    new DebitAccount(fromId, amount).execute(connection);
+    new CreditAccount(toId, amount).execute(connection);
+    return null;
+};
+
+transferFunds.execute(jdbcConnection);
+```
+
+`Transaction.of(statement)` adapts a `Statement<R>` directly, and `andThen`/`map` compose transactions:
+
+```java
+Transaction<Void> transaction = Transaction
+        .of(new DebitAccount(fromId, amount))
+        .andThen(Transaction.of(new CreditAccount(toId, amount)));
+
+transaction.execute(jdbcConnection);
+```
+
+### Settings: isolation level, read-only, retries
+
+`execute(connection, settings)` takes a `TransactionSettings` for cases that need an isolation level, a read-only transaction, or automatic retries on a retryable failure (PostgreSQL's `serialization_failure` and `deadlock_detected` SQLSTATEs):
+
+```java
+TransactionSettings settings = TransactionSettings.DEFAULT
+        .withIsolationLevel(IsolationLevel.SERIALIZABLE)
+        .withRetryPolicy(RetryPolicy.serializationFailures(5));
+
+transferFunds.execute(jdbcConnection, settings);
+```
+
+A retry re-runs the whole `run(connection)` body from scratch, so it is only safe when that body has no side effects beyond the database itself.
+
+### Savepoints
+
+`withSavepoint(onFailure)` wraps a transaction so that a `SQLException` rolls back to a savepoint — not the whole transaction — and `onFailure` supplies a fallback result instead:
+
+```java
+Transaction<Void> outer = connection -> {
+    new InsertOrder(orderId).execute(connection);
+    Transaction.of(new DecrementInventory(items))
+            .withSavepoint((conn, e) -> null) // inventory step failed; order still commits
+            .run(connection);
+    return null;
+};
+
+outer.execute(jdbcConnection);
+```
