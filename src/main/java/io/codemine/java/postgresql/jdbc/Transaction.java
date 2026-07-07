@@ -26,14 +26,14 @@ public interface Transaction<R> {
   R run(ExecutionContext context) throws SQLException;
 
   /**
-   * Runs this transaction using {@link TransactionSettings#DEFAULT}.
+   * Runs this transaction using {@link TransactionSettings#SERIALIZABLE_WRITE}.
    *
    * @param context the transaction context to use
    * @return the result of {@link #run}
    * @throws SQLException if a database access error occurs while executing the transaction
    */
   default R executeOn(TransactionContext context) throws SQLException {
-    return executeOn(context, TransactionSettings.DEFAULT);
+    return executeOn(context, TransactionSettings.SERIALIZABLE_WRITE);
   }
 
   /**

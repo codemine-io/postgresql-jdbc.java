@@ -218,7 +218,7 @@ public class TransactionIT {
 
     transaction.executeOn(
         recordingContext,
-        TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.SERIALIZABLE));
+        TransactionSettings.SERIALIZABLE_WRITE.withIsolationLevel(IsolationLevel.SERIALIZABLE));
 
     assertEquals(Connection.TRANSACTION_SERIALIZABLE, observedIsolation[0]);
   }
@@ -231,7 +231,7 @@ public class TransactionIT {
       conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
       transaction.executeOn(
           TransactionContext.of(conn),
-          TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.SERIALIZABLE));
+          TransactionSettings.SERIALIZABLE_WRITE.withIsolationLevel(IsolationLevel.SERIALIZABLE));
       assertEquals(Connection.TRANSACTION_READ_COMMITTED, conn.getTransactionIsolation());
     }
   }
@@ -242,7 +242,8 @@ public class TransactionIT {
     Transaction<Void> transaction = context -> null;
     TransactionContext recordingContext = recordingTransactionContext(null, observedReadOnly);
 
-    transaction.executeOn(recordingContext, TransactionSettings.DEFAULT.withReadOnly(true));
+    transaction.executeOn(
+        recordingContext, TransactionSettings.SERIALIZABLE_WRITE.withReadOnly(true));
 
     assertTrue(observedReadOnly[0]);
   }
@@ -254,7 +255,7 @@ public class TransactionIT {
     try (var conn = jdbcPool.getConnection()) {
       conn.setReadOnly(false);
       transaction.executeOn(
-          TransactionContext.of(conn), TransactionSettings.DEFAULT.withReadOnly(true));
+          TransactionContext.of(conn), TransactionSettings.SERIALIZABLE_WRITE.withReadOnly(true));
       assertTrue(!conn.isReadOnly());
     }
   }
@@ -289,7 +290,8 @@ public class TransactionIT {
     try (var conn = jdbcPool.getConnection()) {
       result =
           transaction.executeOn(
-              TransactionContext.of(conn), TransactionSettings.DEFAULT.withMaxAttempts(5));
+              TransactionContext.of(conn),
+              TransactionSettings.SERIALIZABLE_WRITE.withMaxAttempts(5));
     }
 
     assertEquals(3, result);
@@ -312,7 +314,8 @@ public class TransactionIT {
           SQLException.class,
           () ->
               transaction.executeOn(
-                  TransactionContext.of(conn), TransactionSettings.DEFAULT.withMaxAttempts(2)));
+                  TransactionContext.of(conn),
+                  TransactionSettings.SERIALIZABLE_WRITE.withMaxAttempts(2)));
     }
 
     assertEquals(2, attempts.get());
@@ -331,7 +334,7 @@ public class TransactionIT {
 
     try (var conn = jdbcPool.getConnection()) {
       transaction.executeOn(
-          TransactionContext.of(conn), TransactionSettings.DEFAULT.withMaxAttempts(5));
+          TransactionContext.of(conn), TransactionSettings.SERIALIZABLE_WRITE.withMaxAttempts(5));
     }
 
     assertEquals(3, attempts.get());
@@ -351,7 +354,8 @@ public class TransactionIT {
           SQLException.class,
           () ->
               transaction.executeOn(
-                  TransactionContext.of(conn), TransactionSettings.DEFAULT.withMaxAttempts(5)));
+                  TransactionContext.of(conn),
+                  TransactionSettings.SERIALIZABLE_WRITE.withMaxAttempts(5)));
     }
 
     assertEquals(1, attempts.get());

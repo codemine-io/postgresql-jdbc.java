@@ -30,8 +30,28 @@ public record TransactionSettings(
     }
   }
 
-  /** Default settings: serializable isolation, not read-only, a modest number of retries. */
-  public static final TransactionSettings DEFAULT =
+  /** Read-committed isolation, read-only, using the default number of retry attempts. */
+  public static final TransactionSettings READ_COMMITTED_READ =
+      new TransactionSettings(IsolationLevel.READ_COMMITTED, true, 7);
+
+  /** Read-committed isolation, read-write, using the default number of retry attempts. */
+  public static final TransactionSettings READ_COMMITTED_WRITE =
+      new TransactionSettings(IsolationLevel.READ_COMMITTED, false, 7);
+
+  /** Repeatable-read isolation, read-only, using the default number of retry attempts. */
+  public static final TransactionSettings REPEATABLE_READ_READ =
+      new TransactionSettings(IsolationLevel.REPEATABLE_READ, true, 7);
+
+  /** Repeatable-read isolation, read-write, using the default number of retry attempts. */
+  public static final TransactionSettings REPEATABLE_READ_WRITE =
+      new TransactionSettings(IsolationLevel.REPEATABLE_READ, false, 7);
+
+  /** Serializable isolation, read-only, using the default number of retry attempts. */
+  public static final TransactionSettings SERIALIZABLE_READ =
+      new TransactionSettings(IsolationLevel.SERIALIZABLE, true, 7);
+
+  /** Serializable isolation, read-write, using the default number of retry attempts. */
+  public static final TransactionSettings SERIALIZABLE_WRITE =
       new TransactionSettings(IsolationLevel.SERIALIZABLE, false, 7);
 
   /**

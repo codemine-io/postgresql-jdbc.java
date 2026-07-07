@@ -12,34 +12,36 @@ public class TransactionSettingsTest {
 
   @Test
   void defaultUsesSerializableIsolationAndIsNotReadOnlyAndRetries() {
-    assertEquals(IsolationLevel.SERIALIZABLE, TransactionSettings.DEFAULT.isolationLevel());
-    assertFalse(TransactionSettings.DEFAULT.readOnly());
-    assertEquals(7, TransactionSettings.DEFAULT.maxAttempts());
+    assertEquals(
+        IsolationLevel.SERIALIZABLE, TransactionSettings.SERIALIZABLE_WRITE.isolationLevel());
+    assertFalse(TransactionSettings.SERIALIZABLE_WRITE.readOnly());
+    assertEquals(7, TransactionSettings.SERIALIZABLE_WRITE.maxAttempts());
   }
 
   @Test
   void withIsolationLevelReturnsModifiedCopyWithoutMutatingOriginal() {
     TransactionSettings modified =
-        TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.READ_COMMITTED);
+        TransactionSettings.SERIALIZABLE_WRITE.withIsolationLevel(IsolationLevel.READ_COMMITTED);
 
     assertEquals(IsolationLevel.READ_COMMITTED, modified.isolationLevel());
-    assertEquals(IsolationLevel.SERIALIZABLE, TransactionSettings.DEFAULT.isolationLevel());
+    assertEquals(
+        IsolationLevel.SERIALIZABLE, TransactionSettings.SERIALIZABLE_WRITE.isolationLevel());
   }
 
   @Test
   void withReadOnlyReturnsModifiedCopyWithoutMutatingOriginal() {
-    TransactionSettings modified = TransactionSettings.DEFAULT.withReadOnly(true);
+    TransactionSettings modified = TransactionSettings.SERIALIZABLE_WRITE.withReadOnly(true);
 
     assertTrue(modified.readOnly());
-    assertFalse(TransactionSettings.DEFAULT.readOnly());
+    assertFalse(TransactionSettings.SERIALIZABLE_WRITE.readOnly());
   }
 
   @Test
   void withMaxAttemptsReturnsModifiedCopyWithoutMutatingOriginal() {
-    TransactionSettings modified = TransactionSettings.DEFAULT.withMaxAttempts(5);
+    TransactionSettings modified = TransactionSettings.SERIALIZABLE_WRITE.withMaxAttempts(5);
 
     assertEquals(5, modified.maxAttempts());
-    assertEquals(7, TransactionSettings.DEFAULT.maxAttempts());
+    assertEquals(7, TransactionSettings.SERIALIZABLE_WRITE.maxAttempts());
   }
 
   @Test
@@ -53,7 +55,8 @@ public class TransactionSettingsTest {
   void withIsolationLevelRejectsNull() {
     var thrown =
         assertThrows(
-            NullPointerException.class, () -> TransactionSettings.DEFAULT.withIsolationLevel(null));
+            NullPointerException.class,
+            () -> TransactionSettings.SERIALIZABLE_WRITE.withIsolationLevel(null));
     assertEquals("level", thrown.getMessage());
   }
 
@@ -61,7 +64,8 @@ public class TransactionSettingsTest {
   void withMaxAttemptsRejectsLessThanOne() {
     var thrown =
         assertThrows(
-            IllegalArgumentException.class, () -> TransactionSettings.DEFAULT.withMaxAttempts(0));
+            IllegalArgumentException.class,
+            () -> TransactionSettings.SERIALIZABLE_WRITE.withMaxAttempts(0));
     assertEquals("maxAttempts must be at least 1", thrown.getMessage());
   }
 }
