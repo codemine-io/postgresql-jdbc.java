@@ -1,6 +1,5 @@
 package io.codemine.java.postgresql.jdbc;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.util.Arrays;
@@ -9,7 +8,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 /**
- * A unit of work run atomically against a single JDBC {@link Connection}.
+ * A unit of work run atomically against a {@link TransactionContext}.
  *
  * @param <R> the result type produced by {@link #run}
  */
@@ -17,77 +16,77 @@ import java.util.function.Function;
 public interface Transaction<R> {
 
   /**
-   * The body of the transaction. May call {@link Statement#execute(Connection)} any number of times
-   * against {@code connection}.
+   * The body of the transaction. May call {@link TransactionContext#execute(Statement)} any number
+   * of times against {@code context}.
    *
-   * @param connection the JDBC connection to run against
+   * @param context the transaction context to run against
    * @return the result of the transaction
    * @throws SQLException if a database access error occurs
    */
-  R run(Connection connection) throws SQLException;
+  R run(TransactionContext context) throws SQLException;
 
   /**
    * Runs this transaction using {@link TransactionSettings#DEFAULT}.
    *
-   * @param connection the JDBC connection to use
+   * @param context the transaction context to use
    * @return the result of {@link #run}
    * @throws SQLException if a database access error occurs while executing the transaction
    */
-  default R execute(Connection connection) throws SQLException {
-    return execute(connection, TransactionSettings.DEFAULT);
+  default R execute(TransactionContext context) throws SQLException {
+    return execute(context, TransactionSettings.DEFAULT);
   }
 
   /**
    * Runs this transaction atomically: disables autocommit, applies {@code settings}, runs {@link
    * #run}, commits on success, and rolls back on any failure &mdash; including an {@link Error}, so
    * that restoring autocommit afterward can never implicitly commit a partially-run transaction.
-   * The connection's original autocommit, isolation level and read-only state are restored before
+   * The context's original autocommit, isolation level and read-only state are restored before
    * returning or throwing; if restoring that state itself fails, the failure is attached to the
    * original one via {@link Throwable#addSuppressed} rather than replacing it.
    *
-   * @param connection the JDBC connection to use
+   * @param context the transaction context to use
    * @param settings the settings to apply for this execution
    * @return the result of {@link #run}
    * @throws SQLException if a database access error occurs while executing the transaction
    */
-  default R execute(Connection connection, TransactionSettings settings) throws SQLException {
-    Objects.requireNonNull(connection, "connection");
+  default R execute(TransactionContext context, TransactionSettings settings) throws SQLException {
+    Objects.requireNonNull(context, "context");
     Objects.requireNonNull(settings, "settings");
 
-    boolean originalAutoCommit = connection.getAutoCommit();
-    int originalIsolation = connection.getTransactionIsolation();
-    boolean originalReadOnly = connection.isReadOnly();
+    boolean originalAutoCommit = context.getAutoCommit();
+    int originalIsolation = context.getTransactionIsolation();
+    boolean originalReadOnly = context.isReadOnly();
 
-    connection.setAutoCommit(false);
+    context.setAutoCommit(false);
     for (IsolationLevel level : settings.isolationLevel().stream().toList()) {
-      connection.setTransactionIsolation(level.jdbcLevel());
+      context.setTransactionIsolation(level.jdbcLevel());
     }
-    connection.setReadOnly(settings.readOnly());
+    context.setReadOnly(settings.readOnly());
 
     R result;
     try {
-      result = executeAttempts(connection, settings);
+      result = executeAttempts(context, settings);
     } catch (Throwable t) {
       if (!(t instanceof Exception)) {
         try {
-          connection.rollback();
+          context.rollback();
         } catch (SQLException suppressed) {
           t.addSuppressed(suppressed);
         }
       }
       try {
-        connection.setAutoCommit(originalAutoCommit);
-        connection.setTransactionIsolation(originalIsolation);
-        connection.setReadOnly(originalReadOnly);
+        context.setAutoCommit(originalAutoCommit);
+        context.setTransactionIsolation(originalIsolation);
+        context.setReadOnly(originalReadOnly);
       } catch (SQLException suppressed) {
         t.addSuppressed(suppressed);
       }
       throw t;
     }
 
-    connection.setAutoCommit(originalAutoCommit);
-    connection.setTransactionIsolation(originalIsolation);
-    connection.setReadOnly(originalReadOnly);
+    context.setAutoCommit(originalAutoCommit);
+    context.setTransactionIsolation(originalIsolation);
+    context.setReadOnly(originalReadOnly);
     return result;
   }
 
@@ -95,16 +94,16 @@ public interface Transaction<R> {
    * Runs {@link #run} in a loop, committing on success and rolling back and retrying on a retryable
    * {@link SQLException}, up to {@code settings.maxAttempts()}.
    */
-  private R executeAttempts(Connection connection, TransactionSettings settings)
+  private R executeAttempts(TransactionContext context, TransactionSettings settings)
       throws SQLException {
     for (int attempt = 1; ; attempt++) {
       try {
-        R result = run(connection);
-        connection.commit();
+        R result = run(context);
+        context.commit();
         return result;
       } catch (Exception e) {
         try {
-          connection.rollback();
+          context.rollback();
         } catch (SQLException suppressed) {
           e.addSuppressed(suppressed);
         }
@@ -130,15 +129,15 @@ public interface Transaction<R> {
    *
    * @param statement the statement to adapt
    * @param <R> the statement's result type
-   * @return a transaction that runs {@code statement} against the given connection
+   * @return a transaction that runs {@code statement} against the given context
    */
   static <R> Transaction<R> of(Statement<R> statement) {
     Objects.requireNonNull(statement, "statement");
-    return statement::execute;
+    return context -> context.execute(statement);
   }
 
   /**
-   * Sequences this and {@code next} into one transaction sharing the same connection: {@code next}
+   * Sequences this and {@code next} into one transaction sharing the same context: {@code next}
    * only runs if this transaction's {@link #run} completes normally, and both run within the same
    * commit/rollback boundary.
    *
@@ -148,9 +147,9 @@ public interface Transaction<R> {
    */
   default <R2> Transaction<R2> andThen(Transaction<? extends R2> next) {
     Objects.requireNonNull(next, "next");
-    return connection -> {
-      run(connection);
-      return next.run(connection);
+    return context -> {
+      run(context);
+      return next.run(context);
     };
   }
 
@@ -163,7 +162,7 @@ public interface Transaction<R> {
    */
   default <R2> Transaction<R2> map(Function<? super R, ? extends R2> mapper) {
     Objects.requireNonNull(mapper, "mapper");
-    return connection -> mapper.apply(run(connection));
+    return context -> mapper.apply(run(context));
   }
 
   /**
@@ -180,7 +179,7 @@ public interface Transaction<R> {
    */
   default <R2> Transaction<R2> flatMap(Function<? super R, Transaction<R2>> mapper) {
     Objects.requireNonNull(mapper, "mapper");
-    return connection -> mapper.apply(run(connection)).run(connection);
+    return context -> mapper.apply(run(context)).run(context);
   }
 
   /**
@@ -202,11 +201,11 @@ public interface Transaction<R> {
    */
   default Transaction<R> or(Transaction<? extends R> alternative) {
     Objects.requireNonNull(alternative, "alternative");
-    return connection -> {
-      Savepoint savepoint = connection.setSavepoint();
+    return context -> {
+      Savepoint savepoint = context.setSavepoint();
       try {
-        R result = run(connection);
-        connection.releaseSavepoint(savepoint);
+        R result = run(context);
+        context.releaseSavepoint(savepoint);
         return result;
       } catch (Throwable t) {
         if (t instanceof SQLException e) {
@@ -216,13 +215,13 @@ public interface Transaction<R> {
           }
         }
         try {
-          connection.rollback(savepoint);
-          connection.releaseSavepoint(savepoint);
+          context.rollback(savepoint);
+          context.releaseSavepoint(savepoint);
         } catch (SQLException suppressed) {
           t.addSuppressed(suppressed);
         }
         try {
-          return alternative.run(connection);
+          return alternative.run(context);
         } catch (Throwable t2) {
           t2.addSuppressed(t);
           throw t2;
@@ -232,14 +231,14 @@ public interface Transaction<R> {
   }
 
   /**
-   * A transaction that always fails, without touching the connection. Acts as the identity element
-   * for {@link #or}: {@code Transaction.<R>empty().or(x)} behaves as {@code x}.
+   * A transaction that always fails, without touching the context. Acts as the identity element for
+   * {@link #or}: {@code Transaction.<R>empty().or(x)} behaves as {@code x}.
    *
    * @param <R> the result type
    * @return a transaction that always throws when run
    */
   static <R> Transaction<R> empty() {
-    return connection -> {
+    return context -> {
       throw new SQLException("Transaction.empty() has no alternative");
     };
   }

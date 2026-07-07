@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Configuration for {@link Transaction#execute(java.sql.Connection, TransactionSettings)}.
+ * Configuration for {@link Transaction#execute(TransactionContext, TransactionSettings)}.
  *
  * @param isolationLevel the isolation level to apply, or empty to leave the connection's current
  *     isolation level untouched
