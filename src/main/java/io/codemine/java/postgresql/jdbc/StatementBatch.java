@@ -4,28 +4,15 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 /**
- * Helper for executing statements in batches. All statements must be of the same type (i.e. have
- * the same SQL text and result type) and must not return rows.
+ * Helper for executing statements as a single JDBC batch. All statements must share the same SQL
+ * text and must not return rows.
  */
-public final class StatementBatch<R> {
-
-  /**
-   * Convenience varargs factory method.
-   *
-   * @param statements the statements to execute in batch
-   * @param <T> the result type
-   * @return a new {@code StatementBatch} containing the provided statements
-   */
-  @SafeVarargs
-  public static <T> StatementBatch<T> of(Statement<T>... statements) {
-    return new StatementBatch<>(Arrays.asList(statements));
-  }
-
-  private final ArrayList<Statement<R>> statements;
+final class StatementBatch<R> {
+  private final List<Statement<R>> statements;
   private final String sql;
 
   /**
@@ -34,12 +21,11 @@ public final class StatementBatch<R> {
    *
    * @param statements the statements to execute in batch
    */
-  public StatementBatch(Iterable<? extends Statement<R>> statements) {
+  StatementBatch(Iterable<? extends Statement<R>> statements) {
     Objects.requireNonNull(statements, "statements");
 
-    this.statements = new ArrayList<>();
+    List<Statement<R>> batch = new ArrayList<>();
     String batchSql = null;
-
     for (Statement<R> statement : statements) {
       Statement<R> batchStatement = Objects.requireNonNull(statement, "statement");
       if (batchStatement.returnsRows()) {
@@ -54,9 +40,10 @@ public final class StatementBatch<R> {
         throw new IllegalArgumentException("All batch statements must use the same SQL text");
       }
 
-      this.statements.add(batchStatement);
+      batch.add(batchStatement);
     }
 
+    this.statements = batch;
     this.sql = batchSql;
   }
 
@@ -68,11 +55,11 @@ public final class StatementBatch<R> {
    * @return a list of decoded results corresponding to each statement in the batch
    * @throws SQLException if a database access error occurs during execution
    */
-  public ArrayList<R> execute(Connection connection) throws SQLException {
+  List<R> execute(Connection connection) throws SQLException {
     Objects.requireNonNull(connection, "connection");
 
     if (statements.isEmpty()) {
-      return new ArrayList<>();
+      return List.of();
     }
 
     try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -83,7 +70,7 @@ public final class StatementBatch<R> {
       }
 
       int[] affectedRows = ps.executeBatch();
-      ArrayList<R> results = new ArrayList<>(affectedRows.length);
+      List<R> results = new ArrayList<>(affectedRows.length);
       for (int index = 0; index < affectedRows.length; index++) {
         results.add(statements.get(index).decodeAffectedRows(affectedRows[index]));
       }

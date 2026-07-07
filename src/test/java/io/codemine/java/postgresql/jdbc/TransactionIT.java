@@ -13,7 +13,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.sql.Savepoint;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
@@ -213,17 +213,12 @@ public class TransactionIT {
   @Test
   void executeAppliesIsolationLevelFromSettings() throws Exception {
     int[] observedIsolation = new int[1];
-    Transaction<Void> transaction =
-        context -> {
-          observedIsolation[0] = context.getTransactionIsolation();
-          return null;
-        };
+    Transaction<Void> transaction = context -> null;
+    TransactionContext recordingContext = recordingTransactionContext(observedIsolation, null);
 
-    try (var conn = jdbcPool.getConnection()) {
-      transaction.execute(
-          TransactionContext.of(conn),
-          TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.SERIALIZABLE));
-    }
+    transaction.execute(
+        recordingContext,
+        TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.SERIALIZABLE));
 
     assertEquals(Connection.TRANSACTION_SERIALIZABLE, observedIsolation[0]);
   }
@@ -244,16 +239,10 @@ public class TransactionIT {
   @Test
   void executeAppliesReadOnlyFromSettings() throws Exception {
     boolean[] observedReadOnly = new boolean[1];
-    Transaction<Void> transaction =
-        context -> {
-          observedReadOnly[0] = context.isReadOnly();
-          return null;
-        };
+    Transaction<Void> transaction = context -> null;
+    TransactionContext recordingContext = recordingTransactionContext(null, observedReadOnly);
 
-    try (var conn = jdbcPool.getConnection()) {
-      transaction.execute(
-          TransactionContext.of(conn), TransactionSettings.DEFAULT.withReadOnly(true));
-    }
+    transaction.execute(recordingContext, TransactionSettings.DEFAULT.withReadOnly(true));
 
     assertTrue(observedReadOnly[0]);
   }
@@ -486,8 +475,9 @@ public class TransactionIT {
             }
 
             @Override
-            public <R> ArrayList<R> execute(StatementBatch<R> batch) throws SQLException {
-              return delegate.execute(batch);
+            public <R> List<R> executeBatch(Iterable<? extends Statement<R>> statements)
+                throws SQLException {
+              return delegate.executeBatch(statements);
             }
 
             @Override
@@ -531,17 +521,17 @@ public class TransactionIT {
             }
 
             @Override
-            public java.sql.Savepoint setSavepoint() throws SQLException {
+            public Savepoint setSavepoint() throws SQLException {
               return delegate.setSavepoint();
             }
 
             @Override
-            public void rollback(java.sql.Savepoint savepoint) throws SQLException {
+            public void rollback(Savepoint savepoint) throws SQLException {
               delegate.rollback(savepoint);
             }
 
             @Override
-            public void releaseSavepoint(java.sql.Savepoint savepoint) throws SQLException {
+            public void releaseSavepoint(Savepoint savepoint) throws SQLException {
               delegate.releaseSavepoint(savepoint);
             }
           };
@@ -651,6 +641,84 @@ public class TransactionIT {
         releaseSavepointCalls.get(),
         "the savepoint rolled back to on fallback must also be released, "
             + "otherwise it lingers for the rest of the transaction");
+  }
+
+  /**
+   * Returns a {@link TransactionContext} that records {@code setTransactionIsolation} and {@code
+   * setReadOnly} calls into {@code observedIsolation} and {@code observedReadOnly} respectively.
+   * Either array may be {@code null} if the corresponding value does not need to be captured.
+   */
+  private static TransactionContext recordingTransactionContext(
+      int[] observedIsolation, boolean[] observedReadOnly) {
+    return new TransactionContext() {
+      private int isolation = Connection.TRANSACTION_READ_COMMITTED;
+      private boolean readOnly = false;
+      private int isolationSets;
+      private int readOnlySets;
+
+      @Override
+      public <R> R execute(Statement<R> statement) {
+        throw new UnsupportedOperationException("Not used");
+      }
+
+      @Override
+      public <R> List<R> executeBatch(Iterable<? extends Statement<R>> statements) {
+        throw new UnsupportedOperationException("Not used");
+      }
+
+      @Override
+      public boolean getAutoCommit() {
+        return true;
+      }
+
+      @Override
+      public void setAutoCommit(boolean autoCommit) {}
+
+      @Override
+      public int getTransactionIsolation() {
+        return isolation;
+      }
+
+      @Override
+      public void setTransactionIsolation(int level) {
+        if (isolationSets == 0 && observedIsolation != null) {
+          observedIsolation[0] = level;
+        }
+        isolationSets++;
+        isolation = level;
+      }
+
+      @Override
+      public boolean isReadOnly() {
+        return readOnly;
+      }
+
+      @Override
+      public void setReadOnly(boolean value) {
+        if (readOnlySets == 0 && observedReadOnly != null) {
+          observedReadOnly[0] = value;
+        }
+        readOnlySets++;
+        readOnly = value;
+      }
+
+      @Override
+      public void commit() {}
+
+      @Override
+      public void rollback() {}
+
+      @Override
+      public Savepoint setSavepoint() {
+        throw new UnsupportedOperationException("Not used");
+      }
+
+      @Override
+      public void rollback(Savepoint savepoint) {}
+
+      @Override
+      public void releaseSavepoint(Savepoint savepoint) {}
+    };
   }
 
   /** Wraps {@code delegate}, counting invocations of the method named {@code methodName}. */

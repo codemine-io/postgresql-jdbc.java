@@ -16,14 +16,14 @@ import java.util.function.Function;
 public interface Transaction<R> {
 
   /**
-   * The body of the transaction. May call {@link TransactionContext#execute(Statement)} any number
-   * of times against {@code context}.
+   * The body of the transaction. May call {@link ExecutionContext#execute(Statement)} any number of
+   * times against {@code context}.
    *
-   * @param context the transaction context to run against
+   * @param context the execution context to run against
    * @return the result of the transaction
    * @throws SQLException if a database access error occurs
    */
-  R run(TransactionContext context) throws SQLException;
+  R run(ExecutionContext context) throws SQLException;
 
   /**
    * Runs this transaction using {@link TransactionSettings#DEFAULT}.
@@ -133,7 +133,7 @@ public interface Transaction<R> {
    */
   static <R> Transaction<R> of(Statement<R> statement) {
     Objects.requireNonNull(statement, "statement");
-    return context -> context.execute(statement);
+    return (ExecutionContext context) -> context.execute(statement);
   }
 
   /**
@@ -147,7 +147,7 @@ public interface Transaction<R> {
    */
   default <R2> Transaction<R2> andThen(Transaction<? extends R2> next) {
     Objects.requireNonNull(next, "next");
-    return context -> {
+    return (ExecutionContext context) -> {
       run(context);
       return next.run(context);
     };
@@ -162,7 +162,7 @@ public interface Transaction<R> {
    */
   default <R2> Transaction<R2> map(Function<? super R, ? extends R2> mapper) {
     Objects.requireNonNull(mapper, "mapper");
-    return context -> mapper.apply(run(context));
+    return (ExecutionContext context) -> mapper.apply(run(context));
   }
 
   /**
@@ -179,7 +179,7 @@ public interface Transaction<R> {
    */
   default <R2> Transaction<R2> flatMap(Function<? super R, Transaction<R2>> mapper) {
     Objects.requireNonNull(mapper, "mapper");
-    return context -> mapper.apply(run(context)).run(context);
+    return (ExecutionContext context) -> mapper.apply(run(context)).run(context);
   }
 
   /**
@@ -201,7 +201,7 @@ public interface Transaction<R> {
    */
   default Transaction<R> or(Transaction<? extends R> alternative) {
     Objects.requireNonNull(alternative, "alternative");
-    return context -> {
+    return (ExecutionContext context) -> {
       Savepoint savepoint = context.setSavepoint();
       try {
         R result = run(context);
@@ -238,7 +238,7 @@ public interface Transaction<R> {
    * @return a transaction that always throws when run
    */
   static <R> Transaction<R> empty() {
-    return context -> {
+    return (ExecutionContext context) -> {
       throw new SQLException("Transaction.empty() has no alternative");
     };
   }

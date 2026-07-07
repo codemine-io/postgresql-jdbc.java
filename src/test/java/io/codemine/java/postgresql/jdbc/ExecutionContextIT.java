@@ -16,11 +16,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-/** Integration tests for {@link StatementBatch}. */
+/** Integration tests for {@link ExecutionContext} batch execution. */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class StatementBatchIT {
+public class ExecutionContextIT {
 
-  private static final String TABLE_NAME = "statement_batch_it";
+  private static final String TABLE_NAME = "execution_context_it";
 
   static final PostgreSQLContainer<?> container;
   static final HikariDataSource jdbcPool;
@@ -55,16 +55,17 @@ public class StatementBatchIT {
   }
 
   @Test
-  void executeAppliesUpdatesInOrder() throws Exception {
-    var batch =
-        new StatementBatch<>(
-            List.of(
-                new UpdateStatement(1, "uno"),
-                new UpdateStatement(99, "missing"),
-                new UpdateStatement(3, "tres")));
-
+  void executeBatchAppliesUpdatesInOrder() throws Exception {
     try (var conn = jdbcPool.getConnection()) {
-      assertEquals(List.of(1, 0, 1), batch.execute(conn));
+      TransactionContext context = TransactionContext.of(conn);
+      List<Integer> result =
+          context.executeBatch(
+              List.of(
+                  new UpdateStatement(1, "uno"),
+                  new UpdateStatement(99, "missing"),
+                  new UpdateStatement(3, "tres")));
+
+      assertEquals(List.of(1, 0, 1), result);
     }
 
     assertTableValue(1, "uno");
@@ -73,84 +74,89 @@ public class StatementBatchIT {
   }
 
   @Test
-  void executeEmptyBatchReturnsEmptyList() throws Exception {
+  void executeBatchEmptyReturnsEmptyList() throws Exception {
     try (var conn = jdbcPool.getConnection()) {
-      assertTrue(new StatementBatch<>(List.of()).execute(conn).isEmpty());
+      TransactionContext context = TransactionContext.of(conn);
+      assertTrue(context.executeBatch(List.of()).isEmpty());
     }
   }
 
   @Test
-  void executeRejectsNullConnection() {
-    var thrown =
-        assertThrows(
-            NullPointerException.class, () -> new StatementBatch<>(List.of()).execute(null));
-    assertEquals("connection", thrown.getMessage());
+  void executeBatchRejectsNullIterable() throws Exception {
+    try (var conn = jdbcPool.getConnection()) {
+      TransactionContext context = TransactionContext.of(conn);
+      var thrown = assertThrows(NullPointerException.class, () -> context.executeBatch(null));
+      assertEquals("statements", thrown.getMessage());
+    }
   }
 
   @Test
-  void constructorRejectsNullIterable() {
-    var thrown = assertThrows(NullPointerException.class, () -> new StatementBatch<>(null));
-    assertEquals("statements", thrown.getMessage());
+  void executeBatchRejectsNullStatement() throws Exception {
+    try (var conn = jdbcPool.getConnection()) {
+      TransactionContext context = TransactionContext.of(conn);
+      ArrayList<Statement<Integer>> statements = new ArrayList<>();
+      statements.add(new UpdateStatement(1, "uno"));
+      statements.add(null);
+
+      var thrown = assertThrows(NullPointerException.class, () -> context.executeBatch(statements));
+      assertEquals("statement", thrown.getMessage());
+    }
   }
 
   @Test
-  void constructorRejectsNullStatement() {
-    ArrayList<Statement<Integer>> statements = new ArrayList<>();
-    statements.add(new UpdateStatement(1, "uno"));
-    statements.add(null);
+  void executeBatchRejectsRowsReturningStatements() throws Exception {
+    try (var conn = jdbcPool.getConnection()) {
+      TransactionContext context = TransactionContext.of(conn);
+      var thrown =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> context.executeBatch(List.of(new RowsReturningStatement())));
 
-    var thrown = assertThrows(NullPointerException.class, () -> new StatementBatch<>(statements));
-    assertEquals("statement", thrown.getMessage());
+      assertEquals("Batch execution is only supported for update statements", thrown.getMessage());
+    }
   }
 
   @Test
-  void constructorRejectsRowsReturningStatements() {
-    var thrown =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new StatementBatch<>(List.of(new RowsReturningStatement())));
+  void executeBatchRejectsMismatchedSql() throws Exception {
+    try (var conn = jdbcPool.getConnection()) {
+      TransactionContext context = TransactionContext.of(conn);
+      var thrown =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  context.executeBatch(
+                      List.of(
+                          new UpdateStatement(1, "uno"),
+                          new Statement<Integer>() {
+                            @Override
+                            public String sql() {
+                              return "UPDATE other_table SET value = ? WHERE id = ?";
+                            }
 
-    assertEquals("Batch execution is only supported for update statements", thrown.getMessage());
-  }
+                            @Override
+                            public void bindParams(PreparedStatement ps) throws SQLException {
+                              ps.setString(1, "dos");
+                              ps.setInt(2, 2);
+                            }
 
-  @Test
-  void constructorRejectsMismatchedSql() {
-    var thrown =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new StatementBatch<>(
-                    List.of(
-                        new UpdateStatement(1, "uno"),
-                        new Statement<Integer>() {
-                          @Override
-                          public String sql() {
-                            return "UPDATE other_table SET value = ? WHERE id = ?";
-                          }
+                            @Override
+                            public boolean returnsRows() {
+                              return false;
+                            }
 
-                          @Override
-                          public void bindParams(PreparedStatement ps) throws SQLException {
-                            ps.setString(1, "dos");
-                            ps.setInt(2, 2);
-                          }
+                            @Override
+                            public Integer decodeResultSet(ResultSet rs) throws SQLException {
+                              throw new UnsupportedOperationException("Not used");
+                            }
 
-                          @Override
-                          public boolean returnsRows() {
-                            return false;
-                          }
+                            @Override
+                            public Integer decodeAffectedRows(long affectedRows) {
+                              return Math.toIntExact(affectedRows);
+                            }
+                          })));
 
-                          @Override
-                          public Integer decodeResultSet(ResultSet rs) throws SQLException {
-                            throw new UnsupportedOperationException("Not used");
-                          }
-
-                          @Override
-                          public Integer decodeAffectedRows(long affectedRows) {
-                            return Math.toIntExact(affectedRows);
-                          }
-                        })));
-
-    assertEquals("All batch statements must use the same SQL text", thrown.getMessage());
+      assertEquals("All batch statements must use the same SQL text", thrown.getMessage());
+    }
   }
 
   private static void assertTableValue(int id, String expectedValue) throws SQLException {

@@ -60,7 +60,7 @@ public interface Statement<R> {
    * @return the decoded statement result of type {@code R}
    * @throws SQLException if a database access error occurs while executing the statement
    */
-  default R execute(Connection conn) throws SQLException {
+  default R executeOn(Connection conn) throws SQLException {
     try (PreparedStatement ps = conn.prepareStatement(sql())) {
       bindParams(ps);
       if (returnsRows()) {

@@ -3,37 +3,18 @@ package io.codemine.java.postgresql.jdbc;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Savepoint;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
- * The environment a {@link Transaction} runs its body and its transaction-control bookkeeping
- * against. Every member is abstract by design: implementors — including instrumentation wrappers
- * that intercept only {@link #execute(Statement)} — must explicitly provide each behavior rather
- * than inherit a {@link Connection}-backed default. Use {@link #of(Connection)} to obtain a plain
- * JDBC-backed implementation.
+ * The transaction-boundary control surface used by {@link Transaction#execute}. It extends {@link
+ * ExecutionContext} with the commit/rollback and connection-state operations that only the executor
+ * should manage; transaction bodies receive only the safer {@link ExecutionContext}. Every member
+ * is abstract by design: implementors must explicitly provide each behavior rather than inherit a
+ * {@link Connection}-backed default. Use {@link #of(Connection)} to obtain a plain JDBC-backed
+ * implementation.
  */
-public interface TransactionContext {
-
-  /**
-   * Executes {@code statement}.
-   *
-   * @param statement the statement to execute
-   * @param <R> the statement's result type
-   * @return the decoded statement result
-   * @throws SQLException if a database access error occurs while executing the statement
-   */
-  <R> R execute(Statement<R> statement) throws SQLException;
-
-  /**
-   * Executes {@code batch}.
-   *
-   * @param batch the batch to execute
-   * @param <R> the batch's result type
-   * @return the decoded results, in the same order as the batch's statements
-   * @throws SQLException if a database access error occurs during execution
-   */
-  <R> ArrayList<R> execute(StatementBatch<R> batch) throws SQLException;
+public interface TransactionContext extends ExecutionContext {
 
   /**
    * Returns whether auto-commit is currently enabled.
@@ -98,30 +79,6 @@ public interface TransactionContext {
   void rollback() throws SQLException;
 
   /**
-   * Rolls back to {@code savepoint}.
-   *
-   * @param savepoint the savepoint to roll back to
-   * @throws SQLException if a database access error occurs
-   */
-  void rollback(Savepoint savepoint) throws SQLException;
-
-  /**
-   * Creates a savepoint in the current transaction.
-   *
-   * @return the new savepoint
-   * @throws SQLException if a database access error occurs
-   */
-  Savepoint setSavepoint() throws SQLException;
-
-  /**
-   * Releases {@code savepoint}.
-   *
-   * @param savepoint the savepoint to release
-   * @throws SQLException if a database access error occurs
-   */
-  void releaseSavepoint(Savepoint savepoint) throws SQLException;
-
-  /**
    * Wraps {@code connection} in a {@code TransactionContext} whose members all delegate straight
    * through to it.
    *
@@ -133,12 +90,13 @@ public interface TransactionContext {
     return new TransactionContext() {
       @Override
       public <R> R execute(Statement<R> statement) throws SQLException {
-        return statement.execute(connection);
+        return statement.executeOn(connection);
       }
 
       @Override
-      public <R> ArrayList<R> execute(StatementBatch<R> batch) throws SQLException {
-        return batch.execute(connection);
+      public <R> List<R> executeBatch(Iterable<? extends Statement<R>> statements)
+          throws SQLException {
+        return new StatementBatch<>(statements).execute(connection);
       }
 
       @Override
