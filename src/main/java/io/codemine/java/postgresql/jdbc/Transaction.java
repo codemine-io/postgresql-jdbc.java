@@ -39,8 +39,11 @@ public interface Transaction<R> {
 
   /**
    * Runs this transaction atomically: disables autocommit, applies {@code settings}, runs {@link
-   * #run}, commits on success, and rolls back on any exception. The connection's original
-   * autocommit, isolation level and read-only state are restored before returning or throwing.
+   * #run}, commits on success, and rolls back on any failure &mdash; including an {@link Error}, so
+   * that restoring autocommit afterward can never implicitly commit a partially-run transaction.
+   * The connection's original autocommit, isolation level and read-only state are restored before
+   * returning or throwing; if restoring that state itself fails, the failure is attached to the
+   * original one via {@link Throwable#addSuppressed} rather than replacing it.
    *
    * @param connection the JDBC connection to use
    * @param settings the settings to apply for this execution
@@ -60,37 +63,65 @@ public interface Transaction<R> {
       connection.setTransactionIsolation(level.jdbcLevel());
     }
     connection.setReadOnly(settings.readOnly());
+
+    R result;
     try {
-      for (int attempt = 1; ; attempt++) {
+      result = executeAttempts(connection, settings);
+    } catch (Throwable t) {
+      if (!(t instanceof Exception)) {
         try {
-          R result = run(connection);
-          connection.commit();
-          return result;
-        } catch (Exception e) {
-          try {
-            connection.rollback();
-          } catch (SQLException suppressed) {
-            e.addSuppressed(suppressed);
-          }
-          if (attempt >= settings.maxAttempts()) {
-            throw e;
-          }
-          boolean retryable = false;
-          if (e instanceof SQLException sqlException) {
-            String state = sqlException.getSQLState();
-            retryable =
-                state != null
-                    && (state.equals("40001") || state.equals("40P01") || state.equals("23505"));
-          }
-          if (!retryable) {
-            throw e;
-          }
+          connection.rollback();
+        } catch (SQLException suppressed) {
+          t.addSuppressed(suppressed);
         }
       }
-    } finally {
-      connection.setAutoCommit(originalAutoCommit);
-      connection.setTransactionIsolation(originalIsolation);
-      connection.setReadOnly(originalReadOnly);
+      try {
+        connection.setAutoCommit(originalAutoCommit);
+        connection.setTransactionIsolation(originalIsolation);
+        connection.setReadOnly(originalReadOnly);
+      } catch (SQLException suppressed) {
+        t.addSuppressed(suppressed);
+      }
+      throw t;
+    }
+
+    connection.setAutoCommit(originalAutoCommit);
+    connection.setTransactionIsolation(originalIsolation);
+    connection.setReadOnly(originalReadOnly);
+    return result;
+  }
+
+  /**
+   * Runs {@link #run} in a loop, committing on success and rolling back and retrying on a retryable
+   * {@link SQLException}, up to {@code settings.maxAttempts()}.
+   */
+  private R executeAttempts(Connection connection, TransactionSettings settings)
+      throws SQLException {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        R result = run(connection);
+        connection.commit();
+        return result;
+      } catch (Exception e) {
+        try {
+          connection.rollback();
+        } catch (SQLException suppressed) {
+          e.addSuppressed(suppressed);
+        }
+        if (attempt >= settings.maxAttempts()) {
+          throw e;
+        }
+        boolean retryable = false;
+        if (e instanceof SQLException sqlException) {
+          String state = sqlException.getSQLState();
+          retryable =
+              state != null
+                  && (state.equals("40001") || state.equals("40P01") || state.equals("23505"));
+        }
+        if (!retryable) {
+          throw e;
+        }
+      }
     }
   }
 
@@ -159,9 +190,12 @@ public interface Transaction<R> {
    * result. On a {@link SQLException} whose SQLSTATE is {@code 40001} (serialization failure) or
    * {@code 40P01} (deadlock detected), rethrows it untouched: those failures are transaction-wide
    * and a savepoint rollback cannot heal them, so they must reach {@link #execute}'s retry loop
-   * instead. Any other {@link SQLException} rolls back to the savepoint, undoing only this
-   * transaction's effects while leaving earlier work in the same transaction intact, and runs
-   * {@code alternative}.
+   * instead. On any other failure &mdash; a {@link SQLException} with a different SQLSTATE, an
+   * unchecked exception, or an {@link Error} &mdash; rolls back to the savepoint and releases it
+   * (PostgreSQL keeps a savepoint alive after rolling back to it, so it must be released explicitly
+   * to avoid it lingering for the rest of the transaction), then runs {@code alternative}. If
+   * {@code alternative} also fails, the original failure is attached to it via {@link
+   * Throwable#addSuppressed}.
    *
    * @param alternative the transaction to run if this one fails recoverably
    * @return a transaction that falls back to {@code alternative} on recoverable failure
@@ -174,13 +208,25 @@ public interface Transaction<R> {
         R result = run(connection);
         connection.releaseSavepoint(savepoint);
         return result;
-      } catch (SQLException e) {
-        String state = e.getSQLState();
-        if (state != null && (state.equals("40001") || state.equals("40P01"))) {
-          throw e;
+      } catch (Throwable t) {
+        if (t instanceof SQLException e) {
+          String state = e.getSQLState();
+          if (state != null && (state.equals("40001") || state.equals("40P01"))) {
+            throw e;
+          }
         }
-        connection.rollback(savepoint);
-        return alternative.run(connection);
+        try {
+          connection.rollback(savepoint);
+          connection.releaseSavepoint(savepoint);
+        } catch (SQLException suppressed) {
+          t.addSuppressed(suppressed);
+        }
+        try {
+          return alternative.run(connection);
+        } catch (Throwable t2) {
+          t2.addSuppressed(t);
+          throw t2;
+        }
       }
     };
   }

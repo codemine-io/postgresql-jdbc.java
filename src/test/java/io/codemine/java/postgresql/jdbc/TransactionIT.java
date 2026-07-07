@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -97,6 +100,62 @@ public class TransactionIT {
     }
 
     assertRowCount(0);
+  }
+
+  @Test
+  void executeRollsBackAndRestoresAutoCommitWhenRunThrowsError() throws Exception {
+    Transaction<Void> transaction =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          throw new AssertionError("simulated error escaping the retry loop");
+        };
+
+    try (var conn = jdbcPool.getConnection()) {
+      conn.setAutoCommit(true);
+      assertThrows(AssertionError.class, () -> transaction.execute(conn));
+      assertTrue(conn.getAutoCommit());
+    }
+
+    assertRowCount(0);
+  }
+
+  @Test
+  void executePreservesOriginalFailureWhenRestoringConnectionStateAlsoFails() throws Exception {
+    SQLException restoreFailure = new SQLException("simulated restore failure");
+    Transaction<Void> transaction =
+        connection -> {
+          throw new SQLException("original failure", "23503");
+        };
+
+    try (var conn = jdbcPool.getConnection()) {
+      Connection faulty = faultyOnNthCall(conn, "setReadOnly", 2, restoreFailure);
+      SQLException thrown = assertThrows(SQLException.class, () -> transaction.execute(faulty));
+      assertEquals("original failure", thrown.getMessage());
+      assertTrue(List.of(thrown.getSuppressed()).contains(restoreFailure));
+    }
+  }
+
+  /**
+   * Wraps {@code delegate} so that the {@code count}-th invocation of the method named {@code
+   * methodName} throws {@code fault} instead of delegating.
+   */
+  private static Connection faultyOnNthCall(
+      Connection delegate, String methodName, int count, SQLException fault) {
+    AtomicInteger calls = new AtomicInteger();
+    InvocationHandler handler =
+        (proxy, method, args) -> {
+          if (method.getName().equals(methodName) && calls.incrementAndGet() == count) {
+            throw fault;
+          }
+          try {
+            return method.invoke(delegate, args);
+          } catch (InvocationTargetException e) {
+            throw e.getCause();
+          }
+        };
+    return (Connection)
+        Proxy.newProxyInstance(
+            Connection.class.getClassLoader(), new Class<?>[] {Connection.class}, handler);
   }
 
   @Test
@@ -440,6 +499,75 @@ public class TransactionIT {
   }
 
   @Test
+  void orFallsBackToAlternativeWhenLeftThrowsRuntimeException() throws Exception {
+    Transaction<Integer> left =
+        connection -> {
+          new InsertRow(2, "two").execute(connection);
+          throw new IllegalStateException("simulated failure");
+        };
+    Transaction<Integer> right =
+        connection -> {
+          new InsertRow(3, "three").execute(connection);
+          return 3;
+        };
+    Transaction<Integer> transaction =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          return left.or(right).run(connection);
+        };
+
+    int result;
+    try (var conn = jdbcPool.getConnection()) {
+      result = transaction.execute(conn);
+    }
+
+    assertEquals(3, result);
+    // Row 1 (before the or()) and row 3 (the right alternative) survive; row 2 (left's own,
+    // failed effect) was rolled back to the savepoint, not the whole transaction.
+    assertRowCount(2);
+  }
+
+  @Test
+  void orReleasesSavepointAfterRollingBackOnFallback() throws Exception {
+    AtomicInteger releaseSavepointCalls = new AtomicInteger();
+    Transaction<Integer> left =
+        connection -> {
+          throw new SQLException("unique violation", "23505");
+        };
+    Transaction<Integer> right = connection -> 2;
+
+    try (var conn = jdbcPool.getConnection()) {
+      Connection counting = countingCalls(conn, "releaseSavepoint", releaseSavepointCalls);
+      left.or(right).execute(counting);
+    }
+
+    assertEquals(
+        1,
+        releaseSavepointCalls.get(),
+        "the savepoint rolled back to on fallback must also be released, "
+            + "otherwise it lingers for the rest of the transaction");
+  }
+
+  /** Wraps {@code delegate}, counting invocations of the method named {@code methodName}. */
+  private static Connection countingCalls(
+      Connection delegate, String methodName, AtomicInteger counter) {
+    InvocationHandler handler =
+        (proxy, method, args) -> {
+          if (method.getName().equals(methodName)) {
+            counter.incrementAndGet();
+          }
+          try {
+            return method.invoke(delegate, args);
+          } catch (InvocationTargetException e) {
+            throw e.getCause();
+          }
+        };
+    return (Connection)
+        Proxy.newProxyInstance(
+            Connection.class.getClassLoader(), new Class<?>[] {Connection.class}, handler);
+  }
+
+  @Test
   void orRethrowsSerializationFailureWithoutRunningRight() throws Exception {
     AtomicInteger rightRuns = new AtomicInteger();
     Transaction<Integer> left =
@@ -478,6 +606,25 @@ public class TransactionIT {
     }
 
     assertEquals(0, rightRuns.get());
+  }
+
+  @Test
+  void orAddsOriginalFailureAsSuppressedWhenAlternativeAlsoFails() throws Exception {
+    Transaction<Integer> left =
+        connection -> {
+          throw new SQLException("left failed", "23505");
+        };
+    Transaction<Integer> right =
+        connection -> {
+          throw new SQLException("right failed", "23503");
+        };
+
+    try (var conn = jdbcPool.getConnection()) {
+      SQLException thrown = assertThrows(SQLException.class, () -> left.or(right).execute(conn));
+      assertEquals("right failed", thrown.getMessage());
+      assertEquals(1, thrown.getSuppressed().length);
+      assertEquals("left failed", thrown.getSuppressed()[0].getMessage());
+    }
   }
 
   @Test
