@@ -227,10 +227,7 @@ public class TransactionIT {
 
     int result;
     try (var conn = jdbcPool.getConnection()) {
-      result =
-          transaction.execute(
-              conn,
-              TransactionSettings.DEFAULT.withRetryPolicy(RetryPolicy.serializationFailures(5)));
+      result = transaction.execute(conn, TransactionSettings.DEFAULT.withMaxAttempts(5));
     }
 
     assertEquals(3, result);
@@ -251,14 +248,28 @@ public class TransactionIT {
     try (var conn = jdbcPool.getConnection()) {
       assertThrows(
           SQLException.class,
-          () ->
-              transaction.execute(
-                  conn,
-                  TransactionSettings.DEFAULT.withRetryPolicy(
-                      RetryPolicy.serializationFailures(2))));
+          () -> transaction.execute(conn, TransactionSettings.DEFAULT.withMaxAttempts(2)));
     }
 
     assertEquals(2, attempts.get());
+  }
+
+  @Test
+  void executeRetriesOnUniqueViolationSqlState() throws Exception {
+    AtomicInteger attempts = new AtomicInteger();
+    Transaction<Void> transaction =
+        connection -> {
+          if (attempts.incrementAndGet() < 3) {
+            throw new SQLException("unique violation", "23505");
+          }
+          return null;
+        };
+
+    try (var conn = jdbcPool.getConnection()) {
+      transaction.execute(conn, TransactionSettings.DEFAULT.withMaxAttempts(5));
+    }
+
+    assertEquals(3, attempts.get());
   }
 
   @Test
@@ -267,17 +278,13 @@ public class TransactionIT {
     Transaction<Void> transaction =
         connection -> {
           attempts.incrementAndGet();
-          throw new SQLException("unique violation", "23505");
+          throw new SQLException("foreign key violation", "23503");
         };
 
     try (var conn = jdbcPool.getConnection()) {
       assertThrows(
           SQLException.class,
-          () ->
-              transaction.execute(
-                  conn,
-                  TransactionSettings.DEFAULT.withRetryPolicy(
-                      RetryPolicy.serializationFailures(5))));
+          () -> transaction.execute(conn, TransactionSettings.DEFAULT.withMaxAttempts(5)));
     }
 
     assertEquals(1, attempts.get());

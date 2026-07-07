@@ -14,7 +14,7 @@ public class TransactionSettingsTest {
   void defaultHasNoIsolationOverrideAndIsNotReadOnlyAndNeverRetries() {
     assertTrue(TransactionSettings.DEFAULT.isolationLevel().isEmpty());
     assertFalse(TransactionSettings.DEFAULT.readOnly());
-    assertEquals(RetryPolicy.NONE, TransactionSettings.DEFAULT.retryPolicy());
+    assertEquals(1, TransactionSettings.DEFAULT.maxAttempts());
   }
 
   @Test
@@ -35,12 +35,11 @@ public class TransactionSettingsTest {
   }
 
   @Test
-  void withRetryPolicyReturnsModifiedCopyWithoutMutatingOriginal() {
-    RetryPolicy policy = RetryPolicy.serializationFailures(5);
-    TransactionSettings modified = TransactionSettings.DEFAULT.withRetryPolicy(policy);
+  void withMaxAttemptsReturnsModifiedCopyWithoutMutatingOriginal() {
+    TransactionSettings modified = TransactionSettings.DEFAULT.withMaxAttempts(5);
 
-    assertEquals(policy, modified.retryPolicy());
-    assertEquals(RetryPolicy.NONE, TransactionSettings.DEFAULT.retryPolicy());
+    assertEquals(5, modified.maxAttempts());
+    assertEquals(1, TransactionSettings.DEFAULT.maxAttempts());
   }
 
   @Test
@@ -52,10 +51,10 @@ public class TransactionSettingsTest {
   }
 
   @Test
-  void withRetryPolicyRejectsNull() {
+  void withMaxAttemptsRejectsLessThanOne() {
     var thrown =
         assertThrows(
-            NullPointerException.class, () -> TransactionSettings.DEFAULT.withRetryPolicy(null));
-    assertEquals("retryPolicy", thrown.getMessage());
+            IllegalArgumentException.class, () -> TransactionSettings.DEFAULT.withMaxAttempts(0));
+    assertEquals("maxAttempts must be at least 1", thrown.getMessage());
   }
 }

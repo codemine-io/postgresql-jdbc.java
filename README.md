@@ -139,17 +139,17 @@ transaction.execute(jdbcConnection);
 
 ### Settings: isolation level, read-only, retries
 
-`execute(connection, settings)` takes a `TransactionSettings` for cases that need an isolation level, a read-only transaction, or automatic retries on a retryable failure (PostgreSQL's `serialization_failure` and `deadlock_detected` SQLSTATEs):
+`execute(connection, settings)` takes a `TransactionSettings` for cases that need an isolation level, a read-only transaction, or automatic retries on a retryable failure (PostgreSQL's `serialization_failure` and `deadlock_detected` SQLSTATEs, plus `unique_violation`, since PostgreSQL may report a genuine serialization conflict under `SERIALIZABLE` isolation as a unique-constraint violation instead):
 
 ```java
 TransactionSettings settings = TransactionSettings.DEFAULT
         .withIsolationLevel(IsolationLevel.SERIALIZABLE)
-        .withRetryPolicy(RetryPolicy.serializationFailures(5));
+        .withMaxAttempts(5);
 
 transferFunds.execute(jdbcConnection, settings);
 ```
 
-A retry re-runs the whole `run(connection)` body from scratch, so it is only safe when that body has no side effects beyond the database itself.
+A retry re-runs the whole `run(connection)` body from scratch, so it is only safe when that body has no side effects beyond the database itself. It's also not a substitute for `INSERT ... ON CONFLICT` when the transaction's own intent is an upsert: retrying a genuinely duplicate insert just reproduces the same `unique_violation` until attempts run out.
 
 ### Savepoints
 

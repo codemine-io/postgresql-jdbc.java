@@ -71,10 +71,17 @@ public interface Transaction<R> {
           } catch (SQLException suppressed) {
             e.addSuppressed(suppressed);
           }
-          boolean retryable =
-              e instanceof SQLException sqlException
-                  && settings.retryPolicy().retryable().test(sqlException);
-          if (attempt >= settings.retryPolicy().maxAttempts() || !retryable) {
+          if (attempt >= settings.maxAttempts()) {
+            throw e;
+          }
+          boolean retryable = false;
+          if (e instanceof SQLException sqlException) {
+            String state = sqlException.getSQLState();
+            retryable =
+                state != null
+                    && (state.equals("40001") || state.equals("40P01") || state.equals("23505"));
+          }
+          if (!retryable) {
             throw e;
           }
         }
