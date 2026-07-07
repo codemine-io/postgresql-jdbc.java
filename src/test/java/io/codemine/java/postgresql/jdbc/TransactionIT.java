@@ -387,28 +387,6 @@ public class TransactionIT {
     assertEquals("mapper", thrown.getMessage());
   }
 
-  @Test
-  void withSavepointRecoversWithoutRollingBackWholeTransaction() throws Exception {
-    Transaction<Void> failingInsert =
-        connection -> {
-          new InsertRow(2, "two").execute(connection);
-          throw new SQLException("simulated failure");
-        };
-    Transaction<Void> outer =
-        connection -> {
-          new InsertRow(1, "one").execute(connection);
-          failingInsert.withSavepoint((conn, e) -> null).run(connection);
-          return null;
-        };
-
-    try (var conn = jdbcPool.getConnection()) {
-      outer.execute(conn);
-    }
-
-    // Row 1 survives (whole transaction commits); row 2 was rolled back to the savepoint.
-    assertRowCount(1);
-  }
-
   private static void assertRowCount(int expected) throws SQLException {
     try (var conn = jdbcPool.getConnection();
         var ps = conn.prepareStatement("SELECT COUNT(*) FROM " + TABLE_NAME);

@@ -2,9 +2,7 @@ package io.codemine.java.postgresql.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Savepoint;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -149,29 +147,5 @@ public interface Transaction<R> {
   default <R2> Transaction<R2> flatMap(Function<? super R, Transaction<R2>> mapper) {
     Objects.requireNonNull(mapper, "mapper");
     return connection -> mapper.apply(run(connection)).run(connection);
-  }
-
-  /**
-   * Wraps this transaction's body in a savepoint: on {@link SQLException}, rolls back to the
-   * savepoint (not the enclosing transaction) and invokes {@code onFailure} to produce a fallback
-   * result instead of propagating the failure.
-   *
-   * @param onFailure invoked with the connection and the failure to produce a fallback result
-   * @return a transaction that recovers from a {@link SQLException} via a savepoint
-   */
-  default Transaction<R> withSavepoint(
-      BiFunction<Connection, SQLException, ? extends R> onFailure) {
-    Objects.requireNonNull(onFailure, "onFailure");
-    return connection -> {
-      Savepoint savepoint = connection.setSavepoint();
-      try {
-        R result = run(connection);
-        connection.releaseSavepoint(savepoint);
-        return result;
-      } catch (SQLException e) {
-        connection.rollback(savepoint);
-        return onFailure.apply(connection, e);
-      }
-    };
   }
 }
