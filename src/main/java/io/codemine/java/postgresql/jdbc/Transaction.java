@@ -2,6 +2,9 @@ package io.codemine.java.postgresql.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Savepoint;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -147,5 +150,80 @@ public interface Transaction<R> {
   default <R2> Transaction<R2> flatMap(Function<? super R, Transaction<R2>> mapper) {
     Objects.requireNonNull(mapper, "mapper");
     return connection -> mapper.apply(run(connection)).run(connection);
+  }
+
+  /**
+   * Falls back to {@code alternative} if this transaction fails.
+   *
+   * <p>Runs this transaction under a savepoint. On success, releases the savepoint and returns the
+   * result. On a {@link SQLException} whose SQLSTATE is {@code 40001} (serialization failure) or
+   * {@code 40P01} (deadlock detected), rethrows it untouched: those failures are transaction-wide
+   * and a savepoint rollback cannot heal them, so they must reach {@link #execute}'s retry loop
+   * instead. Any other {@link SQLException} rolls back to the savepoint, undoing only this
+   * transaction's effects while leaving earlier work in the same transaction intact, and runs
+   * {@code alternative}.
+   *
+   * @param alternative the transaction to run if this one fails recoverably
+   * @return a transaction that falls back to {@code alternative} on recoverable failure
+   */
+  default Transaction<R> or(Transaction<? extends R> alternative) {
+    Objects.requireNonNull(alternative, "alternative");
+    return connection -> {
+      Savepoint savepoint = connection.setSavepoint();
+      try {
+        R result = run(connection);
+        connection.releaseSavepoint(savepoint);
+        return result;
+      } catch (SQLException e) {
+        String state = e.getSQLState();
+        if (state != null && (state.equals("40001") || state.equals("40P01"))) {
+          throw e;
+        }
+        connection.rollback(savepoint);
+        return alternative.run(connection);
+      }
+    };
+  }
+
+  /**
+   * A transaction that always fails, without touching the connection. Acts as the identity element
+   * for {@link #or}: {@code Transaction.<R>empty().or(x)} behaves as {@code x}.
+   *
+   * @param <R> the result type
+   * @return a transaction that always throws when run
+   */
+  static <R> Transaction<R> empty() {
+    return connection -> {
+      throw new SQLException("Transaction.empty() has no alternative");
+    };
+  }
+
+  /**
+   * Runs each of {@code alternatives} in turn, via {@link #or}, until one succeeds.
+   *
+   * <p>An empty list is allowed: the returned transaction fails lazily, only once run, the same way
+   * {@link #empty} does.
+   *
+   * @param alternatives the transactions to try, in order
+   * @param <R> the result type
+   * @return a transaction that runs the first of {@code alternatives} to succeed
+   */
+  static <R> Transaction<R> firstOf(List<Transaction<R>> alternatives) {
+    if (alternatives == null) {
+      return Transaction.empty();
+    }
+    return alternatives.stream().reduce(Transaction.empty(), Transaction::or);
+  }
+
+  /**
+   * Runs each of {@code alternatives} in turn, via {@link #or}, until one succeeds.
+   *
+   * @param alternatives the transactions to try, in order
+   * @param <R> the result type
+   * @return a transaction that runs the first of {@code alternatives} to succeed
+   */
+  @SafeVarargs
+  static <R> Transaction<R> firstOf(Transaction<R>... alternatives) {
+    return Arrays.stream(alternatives).reduce(Transaction.empty(), Transaction::or);
   }
 }

@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -385,6 +386,149 @@ public class TransactionIT {
 
     var thrown = assertThrows(NullPointerException.class, () -> transaction.flatMap(null));
     assertEquals("mapper", thrown.getMessage());
+  }
+
+  @Test
+  void orReturnsLeftResultWithoutRunningRightWhenLeftSucceeds() throws Exception {
+    Transaction<Integer> left =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          return 1;
+        };
+    Transaction<Integer> right =
+        connection -> {
+          new InsertRow(2, "two").execute(connection);
+          return 2;
+        };
+
+    int result;
+    try (var conn = jdbcPool.getConnection()) {
+      result = left.or(right).execute(conn);
+    }
+
+    assertEquals(1, result);
+    assertRowCount(1);
+  }
+
+  @Test
+  void orRollsBackOnlyLeftEffectsWhenLeftFailsRecoverably() throws Exception {
+    Transaction<Integer> left =
+        connection -> {
+          new InsertRow(2, "two").execute(connection);
+          throw new SQLException("unique violation", "23505");
+        };
+    Transaction<Integer> right =
+        connection -> {
+          new InsertRow(3, "three").execute(connection);
+          return 3;
+        };
+    Transaction<Integer> transaction =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          return left.or(right).run(connection);
+        };
+
+    int result;
+    try (var conn = jdbcPool.getConnection()) {
+      result = transaction.execute(conn);
+    }
+
+    assertEquals(3, result);
+    // Row 1 (before the or()) and row 3 (the right alternative) survive; row 2 (left's own,
+    // failed effect) was rolled back to the savepoint, not the whole transaction.
+    assertRowCount(2);
+  }
+
+  @Test
+  void orRethrowsSerializationFailureWithoutRunningRight() throws Exception {
+    AtomicInteger rightRuns = new AtomicInteger();
+    Transaction<Integer> left =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          throw new SQLException("serialization failure", "40001");
+        };
+    Transaction<Integer> right =
+        connection -> {
+          rightRuns.incrementAndGet();
+          return 2;
+        };
+
+    try (var conn = jdbcPool.getConnection()) {
+      assertThrows(SQLException.class, () -> left.or(right).execute(conn));
+    }
+
+    assertEquals(0, rightRuns.get());
+  }
+
+  @Test
+  void orRethrowsDeadlockDetectedWithoutRunningRight() throws Exception {
+    AtomicInteger rightRuns = new AtomicInteger();
+    Transaction<Integer> left =
+        connection -> {
+          throw new SQLException("deadlock detected", "40P01");
+        };
+    Transaction<Integer> right =
+        connection -> {
+          rightRuns.incrementAndGet();
+          return 2;
+        };
+
+    try (var conn = jdbcPool.getConnection()) {
+      assertThrows(SQLException.class, () -> left.or(right).execute(conn));
+    }
+
+    assertEquals(0, rightRuns.get());
+  }
+
+  @Test
+  void emptyOrXBehavesAsX() throws Exception {
+    Transaction<Integer> x =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          return 1;
+        };
+
+    int result;
+    try (var conn = jdbcPool.getConnection()) {
+      result = Transaction.<Integer>empty().or(x).execute(conn);
+    }
+
+    assertEquals(1, result);
+    assertRowCount(1);
+  }
+
+  @Test
+  void firstOfReturnsFirstSuccessAmongFailingAlternatives() throws Exception {
+    Transaction<Integer> a =
+        connection -> {
+          throw new SQLException("unique violation", "23505");
+        };
+    Transaction<Integer> b =
+        connection -> {
+          throw new SQLException("unique violation", "23505");
+        };
+    Transaction<Integer> c =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          return 3;
+        };
+
+    int result;
+    try (var conn = jdbcPool.getConnection()) {
+      result = Transaction.firstOf(List.of(a, b, c)).execute(conn);
+    }
+
+    assertEquals(3, result);
+    assertRowCount(1);
+  }
+
+  @Test
+  void firstOfEmptyListFailsLazilyOnRun() throws Exception {
+    Transaction<Integer> transaction = Transaction.firstOf(List.of());
+
+    try (var conn = jdbcPool.getConnection()) {
+      assertThrows(SQLException.class, () -> transaction.execute(conn));
+    }
   }
 
   private static void assertRowCount(int expected) throws SQLException {
