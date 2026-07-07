@@ -135,6 +135,23 @@ public interface Transaction<R> {
   }
 
   /**
+   * Composes this transaction with another transaction produced from its result.
+   *
+   * <p>Both this transaction and the one returned by {@code mapper} run within the same
+   * commit/rollback boundary.
+   *
+   * @param mapper the function that receives this transaction's result and returns the next
+   *     transaction to run
+   * @param <R2> the result type of the composed transaction
+   * @return a transaction that runs this transaction, then the transaction returned by {@code
+   *     mapper}
+   */
+  default <R2> Transaction<R2> flatMap(Function<? super R, Transaction<R2>> mapper) {
+    Objects.requireNonNull(mapper, "mapper");
+    return connection -> mapper.apply(run(connection)).run(connection);
+  }
+
+  /**
    * Wraps this transaction's body in a savepoint: on {@link SQLException}, rolls back to the
    * savepoint (not the enclosing transaction) and invokes {@code onFailure} to produce a fallback
    * result instead of propagating the failure.

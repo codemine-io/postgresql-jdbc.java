@@ -335,6 +335,59 @@ public class TransactionIT {
   }
 
   @Test
+  void flatMapComposesDependentTransactionsAsOneTransaction() throws Exception {
+    Transaction<Integer> transaction =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          return 1;
+        };
+    Transaction<String> composed =
+        transaction.flatMap(
+            id ->
+                connection -> {
+                  new InsertRow(id + 1, "two").execute(connection);
+                  return "id=" + id;
+                });
+
+    String result;
+    try (var conn = jdbcPool.getConnection()) {
+      result = composed.execute(conn);
+    }
+
+    assertEquals("id=1", result);
+    assertRowCount(2);
+  }
+
+  @Test
+  void flatMapRollsBackFirstStatementWhenSecondFails() throws Exception {
+    Transaction<Integer> transaction =
+        connection -> {
+          new InsertRow(1, "one").execute(connection);
+          return 1;
+        };
+    Transaction<String> composed =
+        transaction.flatMap(
+            id ->
+                connection -> {
+                  throw new SQLException("simulated failure");
+                });
+
+    try (var conn = jdbcPool.getConnection()) {
+      assertThrows(SQLException.class, () -> composed.execute(conn));
+    }
+
+    assertRowCount(0);
+  }
+
+  @Test
+  void flatMapRejectsNullMapper() {
+    Transaction<Integer> transaction = connection -> 1;
+
+    var thrown = assertThrows(NullPointerException.class, () -> transaction.flatMap(null));
+    assertEquals("mapper", thrown.getMessage());
+  }
+
+  @Test
   void withSavepointRecoversWithoutRollingBackWholeTransaction() throws Exception {
     Transaction<Void> failingInsert =
         connection -> {
