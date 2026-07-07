@@ -67,7 +67,7 @@ public class TransactionIT {
         };
 
     try (var conn = jdbcPool.getConnection()) {
-      transaction.execute(TransactionContext.of(conn));
+      transaction.executeOn(TransactionContext.of(conn));
     }
 
     assertRowCount(2);
@@ -82,7 +82,7 @@ public class TransactionIT {
         };
 
     try (var conn = jdbcPool.getConnection()) {
-      assertThrows(SQLException.class, () -> transaction.execute(TransactionContext.of(conn)));
+      assertThrows(SQLException.class, () -> transaction.executeOn(TransactionContext.of(conn)));
     }
 
     assertRowCount(0);
@@ -98,7 +98,7 @@ public class TransactionIT {
 
     try (var conn = jdbcPool.getConnection()) {
       assertThrows(
-          IllegalStateException.class, () -> transaction.execute(TransactionContext.of(conn)));
+          IllegalStateException.class, () -> transaction.executeOn(TransactionContext.of(conn)));
     }
 
     assertRowCount(0);
@@ -114,7 +114,7 @@ public class TransactionIT {
 
     try (var conn = jdbcPool.getConnection()) {
       conn.setAutoCommit(true);
-      assertThrows(AssertionError.class, () -> transaction.execute(TransactionContext.of(conn)));
+      assertThrows(AssertionError.class, () -> transaction.executeOn(TransactionContext.of(conn)));
       assertTrue(conn.getAutoCommit());
     }
 
@@ -133,7 +133,7 @@ public class TransactionIT {
       Connection faulty = faultyOnNthCall(conn, "setReadOnly", 2, restoreFailure);
       SQLException thrown =
           assertThrows(
-              SQLException.class, () -> transaction.execute(TransactionContext.of(faulty)));
+              SQLException.class, () -> transaction.executeOn(TransactionContext.of(faulty)));
       assertEquals("original failure", thrown.getMessage());
       assertTrue(List.of(thrown.getSuppressed()).contains(restoreFailure));
     }
@@ -172,7 +172,7 @@ public class TransactionIT {
 
     try (var conn = jdbcPool.getConnection()) {
       conn.setAutoCommit(true);
-      transaction.execute(TransactionContext.of(conn));
+      transaction.executeOn(TransactionContext.of(conn));
       assertTrue(conn.getAutoCommit());
     }
   }
@@ -186,7 +186,7 @@ public class TransactionIT {
 
     try (var conn = jdbcPool.getConnection()) {
       conn.setAutoCommit(true);
-      assertThrows(SQLException.class, () -> transaction.execute(TransactionContext.of(conn)));
+      assertThrows(SQLException.class, () -> transaction.executeOn(TransactionContext.of(conn)));
       assertTrue(conn.getAutoCommit());
     }
   }
@@ -195,7 +195,7 @@ public class TransactionIT {
   void executeRejectsNullConnection() {
     Transaction<Void> transaction = context -> null;
 
-    var thrown = assertThrows(NullPointerException.class, () -> transaction.execute(null));
+    var thrown = assertThrows(NullPointerException.class, () -> transaction.executeOn(null));
     assertEquals("context", thrown.getMessage());
   }
 
@@ -204,7 +204,7 @@ public class TransactionIT {
     Transaction<Void> transaction = Transaction.of(new InsertRow(1, "one"));
 
     try (var conn = jdbcPool.getConnection()) {
-      transaction.execute(TransactionContext.of(conn));
+      transaction.executeOn(TransactionContext.of(conn));
     }
 
     assertRowCount(1);
@@ -216,7 +216,7 @@ public class TransactionIT {
     Transaction<Void> transaction = context -> null;
     TransactionContext recordingContext = recordingTransactionContext(observedIsolation, null);
 
-    transaction.execute(
+    transaction.executeOn(
         recordingContext,
         TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.SERIALIZABLE));
 
@@ -229,7 +229,7 @@ public class TransactionIT {
 
     try (var conn = jdbcPool.getConnection()) {
       conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
-      transaction.execute(
+      transaction.executeOn(
           TransactionContext.of(conn),
           TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.SERIALIZABLE));
       assertEquals(Connection.TRANSACTION_READ_COMMITTED, conn.getTransactionIsolation());
@@ -242,7 +242,7 @@ public class TransactionIT {
     Transaction<Void> transaction = context -> null;
     TransactionContext recordingContext = recordingTransactionContext(null, observedReadOnly);
 
-    transaction.execute(recordingContext, TransactionSettings.DEFAULT.withReadOnly(true));
+    transaction.executeOn(recordingContext, TransactionSettings.DEFAULT.withReadOnly(true));
 
     assertTrue(observedReadOnly[0]);
   }
@@ -253,7 +253,7 @@ public class TransactionIT {
 
     try (var conn = jdbcPool.getConnection()) {
       conn.setReadOnly(false);
-      transaction.execute(
+      transaction.executeOn(
           TransactionContext.of(conn), TransactionSettings.DEFAULT.withReadOnly(true));
       assertTrue(!conn.isReadOnly());
     }
@@ -267,7 +267,7 @@ public class TransactionIT {
       var thrown =
           assertThrows(
               NullPointerException.class,
-              () -> transaction.execute(TransactionContext.of(conn), null));
+              () -> transaction.executeOn(TransactionContext.of(conn), null));
       assertEquals("settings", thrown.getMessage());
     }
   }
@@ -288,7 +288,7 @@ public class TransactionIT {
     int result;
     try (var conn = jdbcPool.getConnection()) {
       result =
-          transaction.execute(
+          transaction.executeOn(
               TransactionContext.of(conn), TransactionSettings.DEFAULT.withMaxAttempts(5));
     }
 
@@ -311,7 +311,7 @@ public class TransactionIT {
       assertThrows(
           SQLException.class,
           () ->
-              transaction.execute(
+              transaction.executeOn(
                   TransactionContext.of(conn), TransactionSettings.DEFAULT.withMaxAttempts(2)));
     }
 
@@ -330,7 +330,7 @@ public class TransactionIT {
         };
 
     try (var conn = jdbcPool.getConnection()) {
-      transaction.execute(
+      transaction.executeOn(
           TransactionContext.of(conn), TransactionSettings.DEFAULT.withMaxAttempts(5));
     }
 
@@ -350,7 +350,7 @@ public class TransactionIT {
       assertThrows(
           SQLException.class,
           () ->
-              transaction.execute(
+              transaction.executeOn(
                   TransactionContext.of(conn), TransactionSettings.DEFAULT.withMaxAttempts(5)));
     }
 
@@ -363,7 +363,7 @@ public class TransactionIT {
         Transaction.of(new InsertRow(1, "one")).andThen(Transaction.of(new InsertRow(2, "two")));
 
     try (var conn = jdbcPool.getConnection()) {
-      transaction.execute(TransactionContext.of(conn));
+      transaction.executeOn(TransactionContext.of(conn));
     }
 
     assertRowCount(2);
@@ -378,7 +378,7 @@ public class TransactionIT {
     Transaction<Void> transaction = Transaction.of(new InsertRow(1, "one")).andThen(failing);
 
     try (var conn = jdbcPool.getConnection()) {
-      assertThrows(SQLException.class, () -> transaction.execute(TransactionContext.of(conn)));
+      assertThrows(SQLException.class, () -> transaction.executeOn(TransactionContext.of(conn)));
     }
 
     assertRowCount(0);
@@ -395,7 +395,7 @@ public class TransactionIT {
 
     String result;
     try (var conn = jdbcPool.getConnection()) {
-      result = mapped.execute(TransactionContext.of(conn));
+      result = mapped.executeOn(TransactionContext.of(conn));
     }
 
     assertEquals("count=1", result);
@@ -418,7 +418,7 @@ public class TransactionIT {
 
     String result;
     try (var conn = jdbcPool.getConnection()) {
-      result = composed.execute(TransactionContext.of(conn));
+      result = composed.executeOn(TransactionContext.of(conn));
     }
 
     assertEquals("id=1", result);
@@ -440,7 +440,7 @@ public class TransactionIT {
                 });
 
     try (var conn = jdbcPool.getConnection()) {
-      assertThrows(SQLException.class, () -> composed.execute(TransactionContext.of(conn)));
+      assertThrows(SQLException.class, () -> composed.executeOn(TransactionContext.of(conn)));
     }
 
     assertRowCount(0);
@@ -535,7 +535,7 @@ public class TransactionIT {
               delegate.releaseSavepoint(savepoint);
             }
           };
-      transaction.execute(countingContext);
+      transaction.executeOn(countingContext);
     }
 
     assertEquals(2, executedStatements.get());
@@ -557,7 +557,7 @@ public class TransactionIT {
 
     int result;
     try (var conn = jdbcPool.getConnection()) {
-      result = left.or(right).execute(TransactionContext.of(conn));
+      result = left.or(right).executeOn(TransactionContext.of(conn));
     }
 
     assertEquals(1, result);
@@ -584,7 +584,7 @@ public class TransactionIT {
 
     int result;
     try (var conn = jdbcPool.getConnection()) {
-      result = transaction.execute(TransactionContext.of(conn));
+      result = transaction.executeOn(TransactionContext.of(conn));
     }
 
     assertEquals(3, result);
@@ -613,7 +613,7 @@ public class TransactionIT {
 
     int result;
     try (var conn = jdbcPool.getConnection()) {
-      result = transaction.execute(TransactionContext.of(conn));
+      result = transaction.executeOn(TransactionContext.of(conn));
     }
 
     assertEquals(3, result);
@@ -633,7 +633,7 @@ public class TransactionIT {
 
     try (var conn = jdbcPool.getConnection()) {
       Connection counting = countingCalls(conn, "releaseSavepoint", releaseSavepointCalls);
-      left.or(right).execute(TransactionContext.of(counting));
+      left.or(right).executeOn(TransactionContext.of(counting));
     }
 
     assertEquals(
@@ -755,7 +755,7 @@ public class TransactionIT {
         };
 
     try (var conn = jdbcPool.getConnection()) {
-      assertThrows(SQLException.class, () -> left.or(right).execute(TransactionContext.of(conn)));
+      assertThrows(SQLException.class, () -> left.or(right).executeOn(TransactionContext.of(conn)));
     }
 
     assertEquals(0, rightRuns.get());
@@ -775,7 +775,7 @@ public class TransactionIT {
         };
 
     try (var conn = jdbcPool.getConnection()) {
-      assertThrows(SQLException.class, () -> left.or(right).execute(TransactionContext.of(conn)));
+      assertThrows(SQLException.class, () -> left.or(right).executeOn(TransactionContext.of(conn)));
     }
 
     assertEquals(0, rightRuns.get());
@@ -795,7 +795,7 @@ public class TransactionIT {
     try (var conn = jdbcPool.getConnection()) {
       SQLException thrown =
           assertThrows(
-              SQLException.class, () -> left.or(right).execute(TransactionContext.of(conn)));
+              SQLException.class, () -> left.or(right).executeOn(TransactionContext.of(conn)));
       assertEquals("right failed", thrown.getMessage());
       assertEquals(1, thrown.getSuppressed().length);
       assertEquals("left failed", thrown.getSuppressed()[0].getMessage());
@@ -812,7 +812,7 @@ public class TransactionIT {
 
     int result;
     try (var conn = jdbcPool.getConnection()) {
-      result = Transaction.<Integer>empty().or(x).execute(TransactionContext.of(conn));
+      result = Transaction.<Integer>empty().or(x).executeOn(TransactionContext.of(conn));
     }
 
     assertEquals(1, result);
@@ -837,7 +837,7 @@ public class TransactionIT {
 
     int result;
     try (var conn = jdbcPool.getConnection()) {
-      result = Transaction.firstOf(List.of(a, b, c)).execute(TransactionContext.of(conn));
+      result = Transaction.firstOf(List.of(a, b, c)).executeOn(TransactionContext.of(conn));
     }
 
     assertEquals(3, result);
@@ -849,7 +849,7 @@ public class TransactionIT {
     Transaction<Integer> transaction = Transaction.firstOf(List.of());
 
     try (var conn = jdbcPool.getConnection()) {
-      assertThrows(SQLException.class, () -> transaction.execute(TransactionContext.of(conn)));
+      assertThrows(SQLException.class, () -> transaction.executeOn(TransactionContext.of(conn)));
     }
   }
 
