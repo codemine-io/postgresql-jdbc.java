@@ -11,19 +11,21 @@ import org.junit.jupiter.api.Test;
 public class TransactionSettingsTest {
 
   @Test
-  void defaultHasNoIsolationOverrideAndIsNotReadOnlyAndNeverRetries() {
-    assertTrue(TransactionSettings.DEFAULT.isolationLevel().isEmpty());
+  void defaultUsesSerializableIsolationAndIsNotReadOnlyAndRetries() {
+    assertEquals(
+        IsolationLevel.SERIALIZABLE, TransactionSettings.DEFAULT.isolationLevel().orElseThrow());
     assertFalse(TransactionSettings.DEFAULT.readOnly());
-    assertEquals(1, TransactionSettings.DEFAULT.maxAttempts());
+    assertEquals(7, TransactionSettings.DEFAULT.maxAttempts());
   }
 
   @Test
   void withIsolationLevelReturnsModifiedCopyWithoutMutatingOriginal() {
     TransactionSettings modified =
-        TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.SERIALIZABLE);
+        TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.READ_COMMITTED);
 
-    assertEquals(IsolationLevel.SERIALIZABLE, modified.isolationLevel().orElseThrow());
-    assertTrue(TransactionSettings.DEFAULT.isolationLevel().isEmpty());
+    assertEquals(IsolationLevel.READ_COMMITTED, modified.isolationLevel().orElseThrow());
+    assertEquals(
+        IsolationLevel.SERIALIZABLE, TransactionSettings.DEFAULT.isolationLevel().orElseThrow());
   }
 
   @Test
@@ -39,7 +41,7 @@ public class TransactionSettingsTest {
     TransactionSettings modified = TransactionSettings.DEFAULT.withMaxAttempts(5);
 
     assertEquals(5, modified.maxAttempts());
-    assertEquals(1, TransactionSettings.DEFAULT.maxAttempts());
+    assertEquals(7, TransactionSettings.DEFAULT.maxAttempts());
   }
 
   @Test

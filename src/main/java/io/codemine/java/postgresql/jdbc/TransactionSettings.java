@@ -32,9 +32,9 @@ public record TransactionSettings(
     }
   }
 
-  /** Default settings: no isolation-level override, not read-only, no retries. */
+  /** Default settings: serializable isolation, not read-only, a modest number of retries. */
   public static final TransactionSettings DEFAULT =
-      new TransactionSettings(Optional.empty(), false, 1);
+      new TransactionSettings(Optional.of(IsolationLevel.SERIALIZABLE), false, 7);
 
   /**
    * Returns a copy of these settings with the given isolation level.
