@@ -1,13 +1,11 @@
 package io.codemine.java.postgresql.jdbc;
 
 import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Configuration for {@link Transaction#execute(TransactionContext, TransactionSettings)}.
  *
- * @param isolationLevel the isolation level to apply, or empty to leave the connection's current
- *     isolation level untouched
+ * @param isolationLevel the isolation level to apply
  * @param readOnly whether to mark the transaction read-only
  * @param maxAttempts the maximum number of attempts, including the first; at least 1. Beyond the
  *     first, attempts are retried only when the failing statement's SQLSTATE is PostgreSQL's {@code
@@ -18,7 +16,7 @@ import java.util.Optional;
  *     CONFLICT} when the transaction's own intent is an upsert.
  */
 public record TransactionSettings(
-    Optional<IsolationLevel> isolationLevel, boolean readOnly, int maxAttempts) {
+    IsolationLevel isolationLevel, boolean readOnly, int maxAttempts) {
 
   /**
    * Validates the record's components.
@@ -34,7 +32,7 @@ public record TransactionSettings(
 
   /** Default settings: serializable isolation, not read-only, a modest number of retries. */
   public static final TransactionSettings DEFAULT =
-      new TransactionSettings(Optional.of(IsolationLevel.SERIALIZABLE), false, 7);
+      new TransactionSettings(IsolationLevel.SERIALIZABLE, false, 7);
 
   /**
    * Returns a copy of these settings with the given isolation level.
@@ -44,7 +42,7 @@ public record TransactionSettings(
    */
   public TransactionSettings withIsolationLevel(IsolationLevel level) {
     Objects.requireNonNull(level, "level");
-    return new TransactionSettings(Optional.of(level), readOnly, maxAttempts);
+    return new TransactionSettings(level, readOnly, maxAttempts);
   }
 
   /**

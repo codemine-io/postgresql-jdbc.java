@@ -12,8 +12,7 @@ public class TransactionSettingsTest {
 
   @Test
   void defaultUsesSerializableIsolationAndIsNotReadOnlyAndRetries() {
-    assertEquals(
-        IsolationLevel.SERIALIZABLE, TransactionSettings.DEFAULT.isolationLevel().orElseThrow());
+    assertEquals(IsolationLevel.SERIALIZABLE, TransactionSettings.DEFAULT.isolationLevel());
     assertFalse(TransactionSettings.DEFAULT.readOnly());
     assertEquals(7, TransactionSettings.DEFAULT.maxAttempts());
   }
@@ -23,9 +22,8 @@ public class TransactionSettingsTest {
     TransactionSettings modified =
         TransactionSettings.DEFAULT.withIsolationLevel(IsolationLevel.READ_COMMITTED);
 
-    assertEquals(IsolationLevel.READ_COMMITTED, modified.isolationLevel().orElseThrow());
-    assertEquals(
-        IsolationLevel.SERIALIZABLE, TransactionSettings.DEFAULT.isolationLevel().orElseThrow());
+    assertEquals(IsolationLevel.READ_COMMITTED, modified.isolationLevel());
+    assertEquals(IsolationLevel.SERIALIZABLE, TransactionSettings.DEFAULT.isolationLevel());
   }
 
   @Test
@@ -42,6 +40,13 @@ public class TransactionSettingsTest {
 
     assertEquals(5, modified.maxAttempts());
     assertEquals(7, TransactionSettings.DEFAULT.maxAttempts());
+  }
+
+  @Test
+  void constructorRejectsNullIsolationLevel() {
+    var thrown =
+        assertThrows(NullPointerException.class, () -> new TransactionSettings(null, false, 1));
+    assertEquals("isolationLevel", thrown.getMessage());
   }
 
   @Test

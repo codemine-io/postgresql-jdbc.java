@@ -59,9 +59,7 @@ public interface Transaction<R> {
     boolean originalReadOnly = context.isReadOnly();
 
     context.setAutoCommit(false);
-    if (settings.isolationLevel().isPresent()) {
-      context.setTransactionIsolation(settings.isolationLevel().get().jdbcLevel());
-    }
+    context.setTransactionIsolation(settings.isolationLevel().jdbcLevel());
     context.setReadOnly(settings.readOnly());
 
     R result;
