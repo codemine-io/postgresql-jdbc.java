@@ -11,7 +11,7 @@ import java.util.Objects;
  * Helper for executing statements as a single JDBC batch. All statements must share the same SQL
  * text and must not return rows.
  */
-final class StatementBatch<R> {
+public final class StatementBatch<R> {
   private final List<Statement<R>> statements;
   private final String sql;
 
@@ -21,7 +21,7 @@ final class StatementBatch<R> {
    *
    * @param statements the statements to execute in batch
    */
-  StatementBatch(Iterable<? extends Statement<R>> statements) {
+  public StatementBatch(Iterable<? extends Statement<R>> statements) {
     Objects.requireNonNull(statements, "statements");
 
     List<Statement<R>> batch = new ArrayList<>();
@@ -48,6 +48,24 @@ final class StatementBatch<R> {
   }
 
   /**
+   * The shared SQL text of the batch, or {@code null} if the batch is empty.
+   *
+   * @return the shared SQL text of the batch, or {@code null} if empty
+   */
+  public String sql() {
+    return sql;
+  }
+
+  /**
+   * The number of statements in the batch.
+   *
+   * @return the number of statements in the batch
+   */
+  public int size() {
+    return statements.size();
+  }
+
+  /**
    * Execute the batch of statements using the provided JDBC connection. Returns a list of decoded
    * affected-row results, in the same order as the input statements.
    *
@@ -55,7 +73,22 @@ final class StatementBatch<R> {
    * @return a list of decoded results corresponding to each statement in the batch
    * @throws SQLException if a database access error occurs during execution
    */
-  List<R> execute(Connection connection) throws SQLException {
+  public List<R> execute(Connection connection) throws SQLException {
+    return execute(connection, 0);
+  }
+
+  /**
+   * Execute the batch of statements using the provided JDBC connection, bounding each attempt by
+   * the given query timeout. Returns a list of decoded affected-row results, in the same order as
+   * the input statements.
+   *
+   * @param connection the JDBC connection to use for batch execution
+   * @param queryTimeoutSeconds the query timeout to apply, in seconds; values less than or equal to
+   *     0 leave the driver's default in place
+   * @return a list of decoded results corresponding to each statement in the batch
+   * @throws SQLException if a database access error occurs during execution
+   */
+  public List<R> execute(Connection connection, int queryTimeoutSeconds) throws SQLException {
     Objects.requireNonNull(connection, "connection");
 
     if (statements.isEmpty()) {
@@ -63,6 +96,9 @@ final class StatementBatch<R> {
     }
 
     try (PreparedStatement ps = connection.prepareStatement(sql)) {
+      if (queryTimeoutSeconds > 0) {
+        ps.setQueryTimeout(queryTimeoutSeconds);
+      }
       for (Statement<R> statement : statements) {
         ps.clearParameters();
         statement.bindParams(ps);
