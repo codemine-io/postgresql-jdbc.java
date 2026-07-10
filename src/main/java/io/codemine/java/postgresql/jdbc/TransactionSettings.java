@@ -3,7 +3,7 @@ package io.codemine.java.postgresql.jdbc;
 import java.util.Objects;
 
 /**
- * Configuration for {@link Transaction#execute(TransactionContext, TransactionSettings)}.
+ * Configuration for {@link Transaction#executeOn(TransactionContext, TransactionSettings)}.
  *
  * @param isolationLevel the isolation level to apply
  * @param readOnly whether to mark the transaction read-only
