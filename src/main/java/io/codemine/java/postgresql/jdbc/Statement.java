@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Optional;
 
 /**
  * Implemented by each query's parameter+result class. Provides a uniform way to prepare and execute
@@ -73,5 +74,38 @@ public interface Statement<R> {
         return decodeAffectedRows(affectedRows);
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Metadata — optional defaults
+  // ---------------------------------------------------------------------------
+
+  /**
+   * A human-readable name for this statement, used for span names and logging.
+   *
+   * @return the statement name, never {@code null}
+   */
+  default String statementName() {
+    return getClass().getSimpleName();
+  }
+
+  /**
+   * The database operation name, e.g. {@code "INSERT"}, {@code "UPDATE"}, {@code "SELECT"} or
+   * {@code "DELETE"}. Empty if unknown.
+   *
+   * @return the operation name, or empty if not applicable
+   */
+  default Optional<String> operationName() {
+    return Optional.empty();
+  }
+
+  /**
+   * The primary collection (table) name the operation targets, e.g. {@code "albums"}. Empty if
+   * unknown.
+   *
+   * @return the collection name, or empty if not applicable
+   */
+  default Optional<String> collectionName() {
+    return Optional.empty();
   }
 }
