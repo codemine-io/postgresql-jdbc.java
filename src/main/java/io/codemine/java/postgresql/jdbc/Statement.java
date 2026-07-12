@@ -81,7 +81,10 @@ public interface Statement<R> {
   // ---------------------------------------------------------------------------
 
   /**
-   * A human-readable name for this statement, used for span names and logging.
+   * A human-readable name for this statement uniquely identifying the statement among other ones
+   * for this DB. It can be used for span names and logging.
+   *
+   * <p>By default, it returns the simple class name of the implementing class.
    *
    * @return the statement name, never {@code null}
    */
