@@ -111,4 +111,14 @@ public interface Statement<R> {
   default Optional<String> collectionName() {
     return Optional.empty();
   }
+
+  /**
+   * Whether this statement is idempotent, i.e. safe to retry after a failure without risking
+   * duplicated effects (e.g. a {@code SELECT} or an {@code UPSERT}).
+   *
+   * @return {@code true} if the statement is idempotent; {@code false} by default
+   */
+  default boolean idempotent() {
+    return false;
+  }
 }
