@@ -14,6 +14,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /** Integration tests for {@link StatementBatch}. */
@@ -153,6 +155,38 @@ public class StatementBatchIT {
     assertEquals("All batch statements must use the same SQL text", thrown.getMessage());
   }
 
+  @Test
+  void executeAppliesPositiveQueryTimeoutToThePreparedStatement() throws Exception {
+    var batch = new StatementBatch<>(List.of(new SleepStatement(1, 2.0)));
+
+    try (var conn = jdbcPool.getConnection()) {
+      SQLException thrown = assertThrows(SQLException.class, () -> batch.execute(conn, 1));
+      assertTrue(
+          thrown.getMessage().toLowerCase().contains("cancel"),
+          "Expected a statement-cancellation error, got: " + thrown.getMessage());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, -1})
+  void executeWithNonPositiveTimeoutLeavesTheDriverDefaultInPlace(int queryTimeoutSeconds)
+      throws Exception {
+    var batch = new StatementBatch<>(List.of(new SleepStatement(1, 2.0)));
+
+    try (var conn = jdbcPool.getConnection()) {
+      assertEquals(List.of(1), batch.execute(conn, queryTimeoutSeconds));
+    }
+  }
+
+  @Test
+  void executeWithoutATimeoutArgumentLeavesTheDriverDefaultInPlace() throws Exception {
+    var batch = new StatementBatch<>(List.of(new SleepStatement(1, 2.0)));
+
+    try (var conn = jdbcPool.getConnection()) {
+      assertEquals(List.of(1), batch.execute(conn));
+    }
+  }
+
   private static void assertTableValue(int id, String expectedValue) throws SQLException {
     try (var conn = jdbcPool.getConnection();
         var ps = conn.prepareStatement("SELECT value FROM " + TABLE_NAME + " WHERE id = ?")) {
@@ -209,6 +243,36 @@ public class StatementBatchIT {
     @Override
     public boolean returnsRows() {
       return true;
+    }
+
+    @Override
+    public Integer decodeResultSet(ResultSet rs) {
+      throw new UnsupportedOperationException("Not used");
+    }
+
+    @Override
+    public Integer decodeAffectedRows(long affectedRows) {
+      return Math.toIntExact(affectedRows);
+    }
+  }
+
+  /** An update statement whose execution blocks for {@code sleepSeconds} via {@code pg_sleep}. */
+  private record SleepStatement(int id, double sleepSeconds) implements Statement<Integer> {
+
+    @Override
+    public String sql() {
+      return "UPDATE " + TABLE_NAME + " SET value = value WHERE id = ? AND pg_sleep(?) IS NOT NULL";
+    }
+
+    @Override
+    public void bindParams(PreparedStatement ps) throws SQLException {
+      ps.setInt(1, id);
+      ps.setDouble(2, sleepSeconds);
+    }
+
+    @Override
+    public boolean returnsRows() {
+      return false;
     }
 
     @Override

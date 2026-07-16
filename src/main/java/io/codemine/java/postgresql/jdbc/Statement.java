@@ -4,6 +4,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Implemented by each query's parameter+result class. Provides a uniform way to prepare and execute
@@ -73,5 +76,110 @@ public interface Statement<R> {
         return decodeAffectedRows(affectedRows);
       }
     }
+  }
+
+  /**
+   * Transforms this statement's result type, leaving the SQL, parameter binding and metadata
+   * unchanged.
+   *
+   * @param mapper the function to apply to this statement's decoded result
+   * @param <R2> the transformed result type
+   * @return a statement producing the mapped result
+   */
+  default <R2> Statement<R2> map(Function<? super R, ? extends R2> mapper) {
+    Objects.requireNonNull(mapper, "mapper");
+    Statement<R> self = this;
+    return new Statement<R2>() {
+      @Override
+      public String sql() {
+        return self.sql();
+      }
+
+      @Override
+      public void bindParams(PreparedStatement ps) throws SQLException {
+        self.bindParams(ps);
+      }
+
+      @Override
+      public boolean returnsRows() {
+        return self.returnsRows();
+      }
+
+      @Override
+      public R2 decodeResultSet(ResultSet rs) throws SQLException {
+        return mapper.apply(self.decodeResultSet(rs));
+      }
+
+      @Override
+      public R2 decodeAffectedRows(long affectedRows) throws SQLException {
+        return mapper.apply(self.decodeAffectedRows(affectedRows));
+      }
+
+      @Override
+      public String statementName() {
+        return self.statementName();
+      }
+
+      @Override
+      public Optional<String> operationName() {
+        return self.operationName();
+      }
+
+      @Override
+      public Optional<String> collectionName() {
+        return self.collectionName();
+      }
+
+      @Override
+      public boolean idempotent() {
+        return self.idempotent();
+      }
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Metadata — optional defaults
+  // ---------------------------------------------------------------------------
+
+  /**
+   * A human-readable name for this statement uniquely identifying the statement among other ones
+   * for this DB. It can be used for span names and logging.
+   *
+   * <p>By default, it returns the simple class name of the implementing class.
+   *
+   * @return the statement name, never {@code null}
+   */
+  default String statementName() {
+    return getClass().getSimpleName();
+  }
+
+  /**
+   * The database operation name, e.g. {@code "INSERT"}, {@code "UPDATE"}, {@code "SELECT"} or
+   * {@code "DELETE"}. Empty if unknown.
+   *
+   * @return the operation name, or empty if not applicable
+   */
+  default Optional<String> operationName() {
+    return Optional.empty();
+  }
+
+  /**
+   * The primary collection (table) name the operation targets, e.g. {@code "albums"}. Empty if
+   * unknown.
+   *
+   * @return the collection name, or empty if not applicable
+   */
+  default Optional<String> collectionName() {
+    return Optional.empty();
+  }
+
+  /**
+   * Whether this statement is idempotent, i.e. safe to retry after a failure without risking
+   * duplicated effects (e.g. a {@code SELECT} or an {@code UPSERT}).
+   *
+   * @return {@code true} if the statement is idempotent; {@code false} by default
+   */
+  default boolean idempotent() {
+    return false;
   }
 }
