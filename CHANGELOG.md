@@ -2,16 +2,13 @@
 
 ## Breaking
 
-- Removed `StatementBatch.of(Statement...)`; construct with the `Iterable` constructor instead.
-- `StatementBatch.execute(Connection)` now returns `List<R>` instead of `ArrayList<R>`.
+- Removed `StatementBatch`; batch execution now lives in `rich-pg`.
 
 ## Non-breaking
 
 - Added `Statement.map(Function)` to transform a statement's result type while keeping its SQL, parameter binding and metadata.
 - Added `Statement.statementName()`, `operationName()`, `collectionName()` metadata defaults for spans/logging.
 - Added `Statement.idempotent()`, defaulting to `false`, to mark statements safe to retry.
-- Added `StatementBatch.sql()` and `StatementBatch.size()` accessors.
-- Added a `StatementBatch.execute(Connection, int queryTimeoutSeconds)` overload.
 
 # v0.6.0
 
