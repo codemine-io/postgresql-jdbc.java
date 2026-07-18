@@ -35,6 +35,8 @@ public interface Statement<R> {
   /**
    * Whether this statement returns rows (i.e. is a {@code SELECT} or contains a {@code RETURNING}
    * clause).
+   *
+   * @return {@code true} if this statement returns rows, {@code false} otherwise
    */
   boolean returnsRows();
 
