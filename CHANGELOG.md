@@ -1,9 +1,5 @@
 # Upcoming
 
-## Breaking
-
-- Removed `StatementBatch`; batch execution now lives in `rich-pg`.
-
 ## Non-breaking
 
 - Added `Statement.map(Function)` to transform a statement's result type while keeping its SQL, parameter binding and metadata.
