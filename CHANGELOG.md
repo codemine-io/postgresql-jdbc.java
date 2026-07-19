@@ -1,3 +1,9 @@
+# Upcoming
+
+## Breaking
+
+- Removed `StatementBatch`; batch execution now lives in `rich-pg`.
+
 # v0.7.0
 
 ## Non-breaking
