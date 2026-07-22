@@ -140,6 +140,40 @@ public interface Statement<R> {
   }
 
   // ---------------------------------------------------------------------------
+  // Static factories
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Creates a statement that runs plain SQL with no parameters and produces no result, e.g. for
+   * executing DDL.
+   *
+   * <p>Since this factory shares a single implementation across all call sites, {@link
+   * #statementName()} falls back to the same class-derived default for every statement created this
+   * way, regardless of the SQL text. Use {@link #plain(String, boolean, String)} if the statement
+   * needs to be distinguishable in logs, spans and metrics.
+   *
+   * @param sql the SQL text to execute
+   * @return a statement that executes {@code sql} and produces no result
+   */
+  static Statement<Void> plain(String sql) {
+    return new PlainStatement(Optional.empty(), false, sql);
+  }
+
+  /**
+   * Creates a statement that runs plain SQL with no parameters and produces no result, e.g. for
+   * executing DDL.
+   *
+   * @param name the statement name, used for {@link #statementName()}
+   * @param idempotent whether the statement is safe to retry, used for {@link #idempotent()}
+   * @param sql the SQL text to execute
+   * @return a statement that executes {@code sql} and produces no result
+   */
+  static Statement<Void> plain(String name, boolean idempotent, String sql) {
+    Objects.requireNonNull(name, "name");
+    return new PlainStatement(Optional.of(name), idempotent, sql);
+  }
+
+  // ---------------------------------------------------------------------------
   // Metadata — optional defaults
   // ---------------------------------------------------------------------------
 

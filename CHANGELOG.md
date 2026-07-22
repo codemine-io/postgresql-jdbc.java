@@ -4,6 +4,10 @@
 
 - Removed `StatementBatch`; batch execution now lives in `rich-pg`.
 
+## Non-breaking
+
+- Added `Statement.plain(String sql)` and `Statement.plain(String name, boolean idempotent, String sql)` to run parameterless SQL with no result, e.g. for executing DDL.
+
 # v0.7.0
 
 ## Non-breaking
