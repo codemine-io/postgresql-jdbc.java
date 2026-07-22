@@ -18,6 +18,17 @@ support for many PostgreSQL-specific types. This module contains
 pgjdbc-specific adapters and utilities that make it easy to use the
 `postgresql-codecs` codec implementations with `org.postgresql`.
 
+This is the middle layer of a three-layer stack:
+[`postgresql-codecs`](https://github.com/nikita-volkov/postgresql-codecs) (driver-agnostic types)
+→ `postgresql-jdbc` (this library) →
+[`rich-pg`](https://github.com/codemine-io/rich-pg.java) (the pooled, resilient runtime).
+This library is the **JDBC contract layer**: `Statement<R>` and its JDBC codec
+adapters describe how one statement talks to a raw `java.sql.Connection` —
+what generated mapping code is written against, and what any runtime executes.
+It is deliberately stateless: no connection pooling, retry policy, or
+telemetry. `rich-pg` is the (currently sole) production runtime that fulfills
+these contracts; other runtimes could implement them too.
+
 ## Features
 
 - `Statement<R>` abstraction for packaging SQL, parameter binding and result decoding
